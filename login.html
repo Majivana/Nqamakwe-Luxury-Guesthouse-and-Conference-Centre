@@ -425,6 +425,16 @@
                 gap: 20px;
             }
         }
+        .login-container.account-active { max-width: 980px; }
+        #account-tools section, .account-booking { background: #fff; border: 1px solid #e8e2d1; border-radius: 10px; padding: 18px; margin: 14px 0; }
+        #account-tools label { display: grid; gap: 6px; margin: 10px 0; font-size: .92rem; }
+        #account-tools input, #account-tools select { width: 100%; padding: 10px; }
+        #account-tools button { margin: 4px; cursor: pointer; }
+        #account-tools article { border-bottom: 1px solid #eee; padding: 10px 0; }
+        #account-tools details { margin-top: 12px; }
+        #account-tools summary { cursor: pointer; color: #7c1628; font-weight: 700; }
+        .login-container.account-active #account-bookings { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+        @media (max-width: 600px) { .login-container.account-active { margin: 0 10px; } #account-tools section { padding: 12px; } }
     </style>
 </head>
 <body>
@@ -462,55 +472,64 @@
         <div class="container">
             <div class="login-container">
                 <div class="login-header">
-                    <h2>Welcome Back</h2>
-                    <p>Sign in to your account to manage your bookings</p>
+                    <h2>Welcome</h2>
+                    <p>Sign in or create an account to manage your bookings</p>
                 </div>
                 
-                <form class="login-form" id="login-form">
-                    <div class="form-group" id="email-group">
-                        <label for="email">Email Address</label>
-                        <input type="email" id="email" name="email" placeholder="Enter your email" required>
-                        <div class="error-message" id="email-error">Please enter a valid email address</div>
-                    </div>
-                    
-                    <div class="form-group" id="password-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
-                        <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password">
-                            👁️
-                        </button>
-                        <div class="error-message" id="password-error">Password must be at least 6 characters</div>
-                    </div>
-                    
-                    <div class="remember-forgot">
-                        <div class="remember-me">
-                            <input type="checkbox" id="remember" name="remember">
-                            <label for="remember">Remember me</label>
-                        </div>
-                        <a href="https://ngqamakweluxuryguesthouse.co.za/forgot-password.html" class="forgot-password">Forgot Password?</a>
-                    </div>
-                    
-                    <button type="submit" class="login-btn" id="login-button">Sign In</button>
-                    
+                <div class="login-form" id="login-form">
+                    <p id="login-status" role="status" aria-live="polite"></p>
                     <div class="login-divider">
-                        <span>Or continue with</span>
+                        <span>Continue securely with</span>
                     </div>
                     
                     <div class="social-login">
-                        <a href="login.html#" class="social-btn">
+                        <a href="/auth/google" class="social-btn">
                             <img src="assets/icons/google.png" alt="Google">
                             Google
                         </a>
-                        <a href="login.html#" class="social-btn">
+                        <a href="/auth/facebook" class="social-btn">
                             <img src="assets/icons/facebook.png" alt="Facebook">
                             Facebook
                         </a>
                     </div>
                     
-                    <div class="register-link">
-                        <p>Don't have an account? <a href="https://ngqamakweluxuryguesthouse.co.za/register.html">Create one here</a></p>
+                    <p class="register-link">New accounts are created securely the first time you sign in.</p>
+                    <div id="account-tools" hidden>
+                        <h3>Linked sign-in methods</h3>
+                        <div id="linked-identities"></div>
+                        <h3>Your reservations</h3>
+                        <p><a class="login-btn" href="bookings.html#booking-form">Book accommodation, dining, conference or an activity</a></p>
+                        <div id="account-bookings"></div>
+                        <section>
+                            <h3>Breakfast during your stay</h3>
+                            <p>Choose a menu item and service date for a confirmed reservation.</p>
+                            <form id="breakfast-order-form">
+                                <label>Reservation <select name="booking_id" required></select></label>
+                                <label>Breakfast date <input name="service_date" type="date" required></label>
+                                <label>Menu item <select name="menu_item_id" required></select></label>
+                                <label>Quantity <input name="quantity" type="number" min="1" max="20" value="1" required></label>
+                                <label>Notes or dietary needs <input name="notes" maxlength="500"></label>
+                                <button type="submit" class="login-btn">Place breakfast order</button>
+                            </form>
+                            <div id="breakfast-orders"></div>
+                        </section>
+                        <section>
+                            <h3>Notifications & announcements</h3>
+                            <p id="property-service-times">Check-in from 14:00 · Breakfast 07:00–09:00 · Checkout by 10:00 (South Africa time).</p>
+                            <div id="guest-notifications"></div>
+                            <div id="guest-announcements"></div>
+                        </section>
+                        <section>
+                            <h3>Payment history</h3>
+                            <div id="payment-history"></div>
+                        </section>
+                        <section>
+                            <h3>Your calendar</h3>
+                            <div id="guest-calendar"></div>
+                        </section>
                     </div>
-                </form>
+                    <button type="button" class="login-btn" id="logout-button" hidden>Sign Out</button>
+                </div>
             </div>
             
             <div class="login-features">
@@ -591,140 +610,233 @@
     </a>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set current year in footer
+        document.addEventListener('DOMContentLoaded', async function() {
             document.getElementById('year').textContent = new Date().getFullYear();
-            
-            // Form elements
-            const loginForm = document.getElementById('login-form');
-            const emailInput = document.getElementById('email');
-            const passwordInput = document.getElementById('password');
-            const passwordToggle = document.getElementById('password-toggle');
-            const loginButton = document.getElementById('login-button');
-            const emailGroup = document.getElementById('email-group');
-            const passwordGroup = document.getElementById('password-group');
-            
-            // Password toggle functionality
-            if (passwordToggle) {
-                passwordToggle.addEventListener('click', function() {
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-                    this.textContent = type === 'password' ? '👁️' : '🔒';
+            const escapeHtml = value => String(value).replace(/[&<>"']/g, character => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[character]));
+            const status = document.getElementById('login-status');
+            const logoutButton = document.getElementById('logout-button');
+            const params = new URLSearchParams(window.location.search);
+            let accountBookings = [];
+            const requestJson = async (url, options = {}) => {
+                const response = await fetch(url, {
+                    credentials: 'same-origin',
+                    ...options,
+                    headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers }
                 });
+                const data = response.status === 204 ? {} : await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Unable to complete this request.');
+                return data;
+            };
+            const money = (cents, currency = 'ZAR') =>
+                new Intl.NumberFormat('en-ZA', { style: 'currency', currency }).format(cents / 100);
+            const localToday = new Date().toLocaleDateString('en-CA');
+            let optionsMarkup = [
+                ['double-room', 'Double Room'], ['family-room', 'Family Room'], ['apartment', 'Apartment'],
+                ['banquet', 'Banquet Conference'], ['boardroom', 'Boardroom Conference'],
+                ['classroom', 'Classroom Conference'], ['breakfast', 'Breakfast Meal'],
+                ['buffet', 'Buffet Meal'], ['braai', 'Braai Meal'], ['quad-biking', 'Quad Biking'],
+                ['pool-access', 'Pool Access'], ['trampoline', 'Trampoline Fun'],
+                ['nature-walks', 'Nature Walks'], ['spa-treatments', 'Spa Treatments']
+            ];
+            async function loadAccountDashboard() {
+                const [bookingData, paymentData, notificationData, breakfastMenuData, orderData, calendarData, propertyData, bookingOptionsData] =
+                    await Promise.all([
+                        requestJson('/api/account/bookings'), requestJson('/api/account/payments'),
+                        requestJson('/api/account/notifications'), requestJson('/api/breakfast/menu'),
+                        requestJson('/api/account/breakfast-orders'), requestJson('/api/account/calendar'),
+                        requestJson('/api/property-info'), requestJson('/api/booking-options')
+                    ]);
+                if (bookingOptionsData.options.length) {
+                    optionsMarkup = bookingOptionsData.options.map(item => [item.slug, item.name]);
+                }
+                document.getElementById('property-service-times').textContent =
+                    `Check-in from ${propertyData.times.checkin_time} · Breakfast ${propertyData.times.breakfast_start}–${propertyData.times.breakfast_end} · Checkout by ${propertyData.times.checkout_time} (${propertyData.time_zone}).`;
+                accountBookings = bookingData.bookings;
+                document.getElementById('account-bookings').innerHTML = accountBookings.length
+                    ? accountBookings.map(booking => {
+                        const editable = ['pending', 'confirmed'].includes(booking.status) &&
+                            booking.payment_status !== 'paid' && booking.checkin_date >= localToday && !booking.checked_in_at;
+                        return `<article class="account-booking"><h4>Reservation ${Number(booking.id)} · ${escapeHtml(booking.booking_option)}</h4>
+                            <p>${escapeHtml(booking.checkin_date)} – ${escapeHtml(booking.checkout_date)} · ${escapeHtml(booking.status)} · Payment: ${escapeHtml(booking.payment_status)}
+                            ${booking.quoted_total_cents ? ` · ${money(booking.quoted_total_cents, booking.currency)}` : ''}</p>
+                            ${booking.status === 'confirmed' && booking.quoted_total_cents && booking.payment_status !== 'paid' ? `<button type="button" data-payment="${Number(booking.id)}">Pay securely with Yoco</button>` : ''}
+                            ${['pending', 'confirmed'].includes(booking.status) && booking.payment_status !== 'paid' ? `<button type="button" data-cancel-booking="${Number(booking.id)}">Cancel</button>` : ''}
+                            ${booking.status === 'confirmed' && booking.checkin_date === localToday && !booking.checked_in_at ? `<button type="button" data-check-in="${Number(booking.id)}">Check in</button>` : ''}
+                            ${booking.status === 'confirmed' && booking.checked_in_at && booking.checkout_date <= localToday && !booking.checked_out_at ? `<button type="button" data-check-out="${Number(booking.id)}">Check out</button>` : ''}
+                            ${editable ? `<details><summary>Change this reservation</summary><form class="booking-change-form" data-booking-id="${Number(booking.id)}">
+                                <label>Stay or activity <select name="booking_option">${optionsMarkup.map(([value, label]) => `<option value="${value}" ${value === booking.booking_option ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+                                <label>Arrival / service date <input type="date" name="checkin_date" value="${escapeHtml(booking.checkin_date)}" min="${localToday}" required></label>
+                                <label>Departure date <input type="date" name="checkout_date" value="${escapeHtml(booking.checkout_date)}" min="${localToday}" required></label>
+                                <label>Guests <input type="number" name="guests" min="1" max="200" value="${Number(booking.guests)}" required></label>
+                                <label>Children <input type="number" name="children" min="0" max="200" value="${Number(booking.children)}" required></label>
+                                <button type="submit">Save changes</button></form></details>` : ''}
+                        </article>`;
+                    }).join('')
+                    : '<p>No account-linked reservations yet. <a href="bookings.html#booking-form">Browse stays and activities</a>.</p>';
+
+                const mealBookings = accountBookings.filter(booking => booking.status === 'confirmed' && booking.checkout_date > localToday);
+                document.querySelector('#breakfast-order-form [name=booking_id]').innerHTML = mealBookings.length
+                    ? mealBookings.map(booking => `<option value="${Number(booking.id)}">${escapeHtml(booking.booking_option)} · ${escapeHtml(booking.checkin_date)}–${escapeHtml(booking.checkout_date)}</option>`).join('')
+                    : '<option value="">A confirmed upcoming stay is required</option>';
+                document.querySelector('#breakfast-order-form [name=service_date]').min = localToday;
+                document.querySelector('#breakfast-order-form [name=menu_item_id]').innerHTML = breakfastMenuData.menu.length
+                    ? breakfastMenuData.menu.map(item => `<option value="${Number(item.id)}">${escapeHtml(item.name)} · ${money(item.price_cents)}${item.dietary_tags ? ` · ${escapeHtml(item.dietary_tags)}` : ''}</option>`).join('')
+                    : '<option value="">Menu not available yet</option>';
+                document.getElementById('breakfast-orders').innerHTML = orderData.orders.length
+                    ? orderData.orders.map(order => `<p>${escapeHtml(order.service_date)} · ${escapeHtml(order.quantity)} × ${escapeHtml(order.item_name)} · ${money(order.unit_price_cents * order.quantity, order.currency)} · ${escapeHtml(order.status)} / ${escapeHtml(order.payment_status)}
+                        ${order.payment_status === 'unpaid' && order.status !== 'cancelled' ? ` <button type="button" data-breakfast-payment="${Number(order.id)}">Pay with Yoco</button>` : ''}
+                        ${order.status === 'requested' && order.payment_status !== 'paid' ? ` <button type="button" data-breakfast-cancel="${Number(order.id)}">Cancel</button>` : ''}</p>`).join('')
+                    : '<p>No breakfast orders yet.</p>';
+                document.getElementById('payment-history').innerHTML = paymentData.payments.length
+                    ? paymentData.payments.map(payment => `<p>${escapeHtml(payment.created_at)} · Booking ${Number(payment.booking_id)} (${escapeHtml(payment.purpose)}) · ${money(payment.amount_cents, payment.currency)} · ${escapeHtml(payment.provider)} · ${escapeHtml(payment.status)}</p>`).join('')
+                    : '<p>No payments recorded yet.</p>';
+                document.getElementById('guest-notifications').innerHTML = notificationData.notifications.length
+                    ? notificationData.notifications.map(item => `<article><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.message)}</p><small>${escapeHtml(item.scheduled_at)}</small>${item.read_at ? '' : ` <button type="button" data-notification-read="${Number(item.id)}">Mark read</button>`}</article>`).join('')
+                    : '<p>No new stay notifications.</p>';
+                document.getElementById('guest-announcements').innerHTML = notificationData.announcements.length
+                    ? notificationData.announcements.map(item => `<article><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.message)}</p></article>`).join('')
+                    : '<p>No current announcements.</p>';
+                document.getElementById('guest-calendar').innerHTML = [...calendarData.bookings.map(item =>
+                    `<p>${escapeHtml(item.starts_at)} – ${escapeHtml(item.ends_at)} · ${escapeHtml(item.title)} (${escapeHtml(item.status)})</p>`),
+                    ...calendarData.events.map(item => `<p>${escapeHtml(item.starts_at)} · ${escapeHtml(item.title)} · ${escapeHtml(item.description)}</p>`)]
+                    .join('') || '<p>No upcoming stay dates or guest events.</p>';
             }
-            
-            // Input focus effects
-            const inputs = [emailInput, passwordInput];
-            inputs.forEach(input => {
-                input.addEventListener('focus', function() {
-                    this.parentElement.classList.add('focused');
-                });
-                
-                input.addEventListener('blur', function() {
-                    if (!this.value) {
-                        this.parentElement.classList.remove('focused');
+
+            if (params.has('error')) {
+                const messages = {
+                    link_failed: 'That sign-in method could not be linked. It may already belong to another account.',
+                    reauthentication_required: 'Sign out and sign in again before linking another sign-in method.',
+                    sign_in_failed: 'Sign-in was not completed. Please try again.'
+                };
+                status.textContent = messages[params.get('error')] || 'Sign-in was not completed. Please try again.';
+            } else if (params.has('account_linked')) {
+                status.textContent = 'Sign-in method linked to your account.';
+            }
+
+            try {
+                let meResponse;
+                try {
+                    meResponse = await requestJson('/api/me');
+                } catch (error) {
+                    if (/Authentication required/i.test(error.message)) return;
+                    throw error;
+                }
+                const { user } = meResponse;
+                status.textContent = `Signed in as ${user.name}${user.email ? ` (${user.email})` : ''}.`;
+                logoutButton.hidden = false;
+                document.getElementById('account-tools').hidden = false;
+                document.querySelector('.login-container').classList.add('account-active');
+                document.querySelectorAll('.social-btn').forEach(button => button.style.display = 'none');
+                const { identities } = await requestJson('/api/account/identities');
+                const linked = new Set(identities.map(identity => identity.provider));
+                document.getElementById('linked-identities').innerHTML = ['google', 'facebook'].map(provider =>
+                    linked.has(provider)
+                        ? `<p>${provider === 'google' ? 'Google' : 'Facebook'} linked ${identities.length > 1 ? `<button type="button" data-unlink="${provider}">Unlink</button>` : '<span>· Link another method before unlinking.</span>'}</p>`
+                        : `<p>${provider === 'google' ? 'Google' : 'Facebook'} not linked <a href="/auth/${provider}?intent=link">Link account</a></p>`
+                ).join('');
+                await loadAccountDashboard();
+            } catch {
+                status.textContent = 'Account services are temporarily unavailable. Please try again later.';
+            }
+
+            document.getElementById('account-tools').addEventListener('click', async function(event) {
+                const unlink = event.target.closest('[data-unlink]');
+                const payment = event.target.closest('[data-payment]');
+                const cancelBooking = event.target.closest('[data-cancel-booking]');
+                const checkIn = event.target.closest('[data-check-in]');
+                const checkOut = event.target.closest('[data-check-out]');
+                const breakfastPayment = event.target.closest('[data-breakfast-payment]');
+                const breakfastCancel = event.target.closest('[data-breakfast-cancel]');
+                const readNotification = event.target.closest('[data-notification-read]');
+                try {
+                    if (unlink) {
+                        const response = await fetch(`/api/account/identities/${unlink.dataset.unlink}`, {
+                            method: 'DELETE', credentials: 'same-origin'
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(result.error || 'Unable to unlink this provider.');
+                        window.location.reload();
+                    } else if (payment) {
+                        const checkout = await requestJson(`/api/account/bookings/${payment.dataset.payment}/payment`, { method: 'POST' });
+                        window.location.assign(checkout.url);
+                    } else if (cancelBooking && window.confirm('Cancel this unpaid reservation?')) {
+                        const response = await fetch(`/api/account/bookings/${cancelBooking.dataset.cancelBooking}/cancel`, {
+                            method: 'POST', credentials: 'same-origin'
+                        });
+                        const result = await response.json().catch(() => ({}));
+                        if (!response.ok) throw new Error(result.error || 'Unable to cancel this reservation.');
+                        status.textContent = 'Reservation cancelled.';
+                        await loadAccountDashboard();
+                    } else if (checkIn || checkOut) {
+                        const bookingId = (checkIn || checkOut).dataset.checkIn || (checkIn || checkOut).dataset.checkOut;
+                        const endpoint = checkIn ? 'check-in' : 'check-out';
+                        await requestJson(`/api/account/bookings/${bookingId}/${endpoint}`, { method: 'POST' });
+                        status.textContent = `Online ${checkIn ? 'check-in' : 'check-out'} recorded.`;
+                        await loadAccountDashboard();
+                    } else if (breakfastPayment) {
+                        const checkout = await requestJson(`/api/account/breakfast-orders/${breakfastPayment.dataset.breakfastPayment}/payment`, { method: 'POST' });
+                        window.location.assign(checkout.url);
+                    } else if (breakfastCancel) {
+                        await requestJson(`/api/account/breakfast-orders/${breakfastCancel.dataset.breakfastCancel}/cancel`, { method: 'POST' });
+                        await loadAccountDashboard();
+                    } else if (readNotification) {
+                        await requestJson(`/api/account/notifications/${readNotification.dataset.notificationRead}/read`, { method: 'PATCH', body: '{}' });
+                        await loadAccountDashboard();
                     }
-                });
+                } catch (error) {
+                    status.textContent = error.message;
+                }
             });
-            
-            // Form validation
-            function validateEmail(email) {
-                const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                return re.test(email);
-            }
-            
-            function validatePassword(password) {
-                return password.length >= 6;
-            }
-            
-            function showError(element, message) {
-                element.classList.add('error');
-                const errorElement = element.querySelector('.error-message');
-                if (errorElement) {
-                    errorElement.textContent = message;
-                    errorElement.style.display = 'block';
-                }
-            }
-            
-            function hideError(element) {
-                element.classList.remove('error');
-                const errorElement = element.querySelector('.error-message');
-                if (errorElement) {
-                    errorElement.style.display = 'none';
-                }
-            }
-            
-            // Real-time validation
-            emailInput.addEventListener('input', function() {
-                if (validateEmail(this.value)) {
-                    hideError(emailGroup);
-                } else {
-                    showError(emailGroup, 'Please enter a valid email address');
+            document.getElementById('account-tools').addEventListener('submit', async event => {
+                if (event.target.id === 'breakfast-order-form') {
+                    event.preventDefault();
+                    try {
+                        const data = Object.fromEntries(new FormData(event.target).entries());
+                        data.booking_id = Number(data.booking_id);
+                        data.menu_item_id = Number(data.menu_item_id);
+                        data.quantity = Number(data.quantity);
+                        const result = await requestJson('/api/account/breakfast-orders', {
+                            method: 'POST', body: JSON.stringify(data)
+                        });
+                        status.textContent = `Breakfast order placed: ${money(result.total_cents)}.`;
+                        event.target.reset();
+                        await loadAccountDashboard();
+                    } catch (error) {
+                        status.textContent = error.message;
+                    }
+                } else if (event.target.matches('.booking-change-form')) {
+                    event.preventDefault();
+                    try {
+                        const data = Object.fromEntries(new FormData(event.target).entries());
+                        data.guests = Number(data.guests);
+                        data.children = Number(data.children);
+                        const result = await requestJson(`/api/account/bookings/${event.target.dataset.bookingId}/change`, {
+                            method: 'POST', body: JSON.stringify(data)
+                        });
+                        status.textContent = `Reservation updated. New status: ${result.booking.status}.`;
+                        await loadAccountDashboard();
+                    } catch (error) {
+                        status.textContent = error.message;
+                    }
                 }
             });
-            
-            passwordInput.addEventListener('input', function() {
-                if (validatePassword(this.value)) {
-                    hideError(passwordGroup);
-                } else {
-                    showError(passwordGroup, 'Password must be at least 6 characters');
+
+            logoutButton.addEventListener('click', async function() {
+                logoutButton.disabled = true;
+                try {
+                    const response = await fetch('/api/logout', {
+                        method: 'POST',
+                        credentials: 'same-origin'
+                    });
+                    if (!response.ok) throw new Error('Sign out failed.');
+                    window.location.assign('/login.html');
+                } catch {
+                    status.textContent = 'Unable to sign out. Please try again.';
+                    logoutButton.disabled = false;
                 }
             });
-            
-            // Login form submission
-            if (loginForm) {
-                loginForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    
-                    // Get form data
-                    const email = emailInput.value;
-                    const password = passwordInput.value;
-                    const remember = document.getElementById('remember').checked;
-                    
-                    // Validate form
-                    let isValid = true;
-                    
-                    if (!validateEmail(email)) {
-                        showError(emailGroup, 'Please enter a valid email address');
-                        isValid = false;
-                    } else {
-                        hideError(emailGroup);
-                    }
-                    
-                    if (!validatePassword(password)) {
-                        showError(passwordGroup, 'Password must be at least 6 characters');
-                        isValid = false;
-                    } else {
-                        hideError(passwordGroup);
-                    }
-                    
-                    if (!isValid) {
-                        return;
-                    }
-                    
-                    // Show loading state
-                    loginButton.classList.add('loading');
-                    loginButton.disabled = true;
-                    
-                    // Simulate login process (replace with actual authentication)
-                    setTimeout(() => {
-                        // For demo purposes, always show success
-                        // In real implementation, validate credentials with backend
-                        
-                        // Reset button state
-                        loginButton.classList.remove('loading');
-                        loginButton.disabled = false;
-                        
-                        // Show success message (in real implementation, redirect to dashboard)
-                        alert('Login successful! Welcome back to Ngqamakwe Luxury Guest House.');
-                        
-                        // Redirect to dashboard (uncomment in production)
-                        // window.location.href = 'dashboard.html';
-                    }, 2000);
-                });
-            }
-            
-            
         });
     </script>
     <script src="js/script.js"></script>

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Staff Console | Ngqamakwe Luxury Guest House</title>
+    <link rel="stylesheet" href="css/staff.css">
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="index.html">Ngqamakwe <span>Staff Console</span></a>
+        <div class="staff-identity"><span id="staff-name">Loading account…</span><button id="sign-out" class="button button-light">Sign out</button></div>
+    </header>
+    <div class="layout">
+        <aside class="sidebar" aria-label="Staff tools">
+            <nav id="staff-nav">
+                <button class="nav-item active" data-panel="overview">Overview</button>
+                <button class="nav-item" data-panel="bookings">Reservations</button>
+                <button class="nav-item" data-panel="availability">Inventory & availability</button>
+                <button class="nav-item" data-panel="catalogue">Business catalogue</button>
+                <button class="nav-item" data-panel="guests">Guests</button>
+                <button class="nav-item" data-panel="inquiries">Enquiries</button>
+                <button class="nav-item" data-panel="finances">Financials & reports</button>
+                <button class="nav-item" data-panel="tasks">Housekeeping tasks</button>
+                <button class="nav-item" data-panel="attendance">Attendance</button>
+                <button class="nav-item" data-panel="workforce">My schedule & leave</button>
+                <button class="nav-item" data-panel="calendar">Events calendar</button>
+                <button class="nav-item" data-panel="guest-services">Breakfast orders</button>
+                <button class="nav-item" data-panel="announcements">Announcements</button>
+                <button class="nav-item" data-panel="team">Team & accounts</button>
+                <button class="nav-item" data-panel="mail">Email delivery</button>
+                <button class="nav-item" data-panel="settings">Business settings</button>
+            </nav>
+        </aside>
+        <main class="content">
+            <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+            <section id="panel-overview" class="panel active">
+                <div class="page-heading"><div><p class="eyebrow">PROPERTY OPERATIONS</p><h1>Today at the guest house</h1></div><button class="button" data-refresh>Refresh</button></div>
+                <div id="summary-cards" class="metric-grid"></div>
+                <div class="card"><h2>Upcoming arrivals</h2><div id="upcoming-arrivals"></div></div>
+            </section>
+            <section id="panel-bookings" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">GUEST JOURNEY</p><h1>Reservations</h1></div><button class="button" data-refresh>Refresh</button></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Guest</th><th>Option</th><th>Dates</th><th>Guests</th><th>Status / payment</th><th>Assign inventory & action</th></tr></thead><tbody id="booking-rows"></tbody></table></div></div>
+            </section>
+            <section id="panel-availability" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">PROPERTY CAPACITY</p><h1>Inventory & availability</h1></div><button class="button" data-refresh>Refresh</button></div>
+                <div class="columns">
+                    <form id="inventory-form" class="card form-grid">
+                        <h2>Add room, venue or service capacity</h2>
+                        <label>Booking option key <input name="slug" placeholder="double-room" required></label>
+                        <label>Category <select name="category"><option>accommodation</option><option>conference</option><option>dining</option><option>leisure</option></select></label>
+                        <label>Name <input name="name" required></label>
+                        <label>Description <input name="description"></label>
+                        <label>Available units <input name="units" type="number" min="1" value="1" required></label>
+                        <label>Guests per unit <input name="max_guests" type="number" min="1" value="2" required></label>
+                        <label>Rate per unit (ZAR) <input name="price" type="number" min="0" step="0.01"></label>
+                        <button class="button" type="submit">Add inventory</button>
+                    </form>
+                    <form id="availability-form" class="card form-grid">
+                        <h2>Check date availability</h2>
+                        <label>Booking option <select name="resource" id="availability-resource" required></select></label>
+                        <label>Check-in <input name="checkin" type="date" required></label>
+                        <label>Check-out <input name="checkout" type="date" required></label>
+                        <label>Guests <input name="guests" type="number" min="1" value="2" required></label>
+                        <label>Units <input name="units" type="number" min="1" value="1" required></label>
+                        <button class="button" type="submit">Check dates</button>
+                        <p id="availability-result" class="muted"></p>
+                    </form>
+                </div>
+                <div class="card"><h2>Active and inactive inventory</h2><div class="table-wrap"><table><thead><tr><th>Option key</th><th>Property item</th><th>Capacity</th><th>Rate / unit / day</th><th>Status</th><th>Actions</th></tr></thead><tbody id="inventory-rows"></tbody></table></div></div>
+            </section>
+            <section id="panel-catalogue" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">SERVICES & RATES</p><h1>Business catalogue</h1></div><button class="button" data-refresh>Refresh</button></div>
+                <form id="catalogue-form" class="card inline-form">
+                    <label>Category <input name="category" placeholder="accommodation" required></label>
+                    <label>Service / package <input name="name" required></label>
+                    <label>Description <input name="description"></label>
+                    <label>Price (ZAR) <input name="price" type="number" min="0" step="0.01"></label>
+                    <button class="button">Add catalogue item</button>
+                </form>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Service</th><th>Description</th><th>Category</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead><tbody id="catalogue-rows"></tbody></table></div></div>
+                <p class="muted">This catalogue feeds the public `/api/offerings` API. The current static brochure cards remain separately maintained in website HTML.</p>
+            </section>
+            <section id="panel-guests" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">GUEST RELATIONSHIPS</p><h1>Guest directory</h1></div></div>
+                <div class="card"><label class="search-label">Search guests <input id="guest-search" type="search" placeholder="Name, email, or phone"></label><div class="table-wrap"><table><thead><tr><th>Guest</th><th>Contact</th><th>Bookings</th><th>Last arrival</th><th>Actions</th></tr></thead><tbody id="guest-rows"></tbody></table></div></div>
+                <div id="guest-detail" class="card" hidden></div>
+            </section>
+            <section id="panel-inquiries" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">GUEST COMMUNICATION</p><h1>Enquiries</h1></div></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Received</th><th>Guest</th><th>Subject & message</th><th>Status</th><th>Update</th></tr></thead><tbody id="inquiry-rows"></tbody></table></div></div>
+            </section>
+            <section id="panel-finances" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">REVENUE & COST CONTROL</p><h1>Financials & reports</h1></div><button class="button" id="download-report">Download CSV</button></div>
+                <form id="report-filter" class="card inline-form"><label>From <input name="from" type="date"></label><label>To <input name="to" type="date"></label><button class="button">Run report</button></form>
+                <div id="financial-summary" class="metric-grid"></div>
+                <div class="columns">
+                    <form id="ledger-form" class="card form-grid">
+                        <h2>Record cash income or expense</h2>
+                        <label>Type <select name="entry_type"><option value="expense">Expense</option><option value="income">Cash income</option></select></label>
+                        <label>Category <input name="category" placeholder="Supplies" required></label>
+                        <label>Description <input name="description" required></label>
+                        <label>Amount (ZAR) <input name="amount" type="number" min="0.01" step="0.01" required></label>
+                        <label>Date <input name="transaction_date" type="date" required></label>
+                        <label>Receipt / reference <input name="receipt_reference"></label>
+                        <button class="button" type="submit">Save ledger entry</button>
+                    </form>
+                        <div class="card"><h2>Outstanding guest balances</h2><div id="outstanding"></div><h2>Reservation pipeline</h2><div id="booking-pipeline"></div></div>
+                </div>
+                    <div class="card"><h2>Occupancy and capacity</h2><div id="occupancy-report"></div></div>
+                <div class="card"><h2>Transactions</h2><div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th><th>Reference</th></tr></thead><tbody id="ledger-rows"></tbody></table></div></div>
+            </section>
+            <section id="panel-tasks" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">DAILY SERVICE</p><h1>Housekeeping & operations</h1></div></div>
+                <form id="task-form" class="card inline-form"><label>Task <input name="title" required></label><label>Details <input name="description"></label><label>Due date <input name="due_date" type="date" required></label><button class="button">Create task</button></form>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Due</th><th>Task</th><th>Room / venue</th><th>Assigned to</th><th>Status</th><th>Action</th></tr></thead><tbody id="task-rows"></tbody></table></div></div>
+            </section>
+            <section id="panel-attendance" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">ON-SITE STAFFING</p><h1>Attendance</h1></div></div>
+                <div class="card"><p id="attendance-status">Checking your attendance…</p><p class="muted">Location is verified on the server against the property premises. Allow location access only while on site.</p>
+                    <div class="table-actions"><button class="button" id="clock-in">Clock in</button><button class="button" id="clock-out">Clock out</button></div>
+                </div>
+                <div class="card"><h2>Your recent shifts</h2><div id="attendance-history"></div></div>
+            </section>
+            <section id="panel-workforce" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">PEOPLE & SHIFTS</p><h1>My schedule & leave</h1></div><button class="button" id="refresh-workforce">Refresh</button></div>
+                <div class="card"><h2>This week</h2><label id="schedule-view-label" hidden>View staff member <select id="schedule-view-user"></select></label><div id="staff-weekly-schedule"></div></div>
+                <form id="leave-form" class="card inline-form"><label>First day <input name="start_date" type="date" required></label><label>Last day <input name="end_date" type="date" required></label><label>Reason <input name="reason" maxlength="1000" required></label><button class="button">Request leave</button></form>
+                <div id="schedule-publish" class="card" hidden><h2>Publish a staff shift</h2><form id="shift-form" class="inline-form"><label>Staff member <select name="user_id" required></select></label><label>Starts <input name="starts_at" type="datetime-local" required></label><label>Ends <input name="ends_at" type="datetime-local" required></label><label>Assignment <input name="assignment"></label><button class="button">Add shift</button></form></div>
+                <div class="card"><h2>Leave requests</h2><div id="leave-requests"></div></div>
+            </section>
+            <section id="panel-calendar" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">PROPERTY DIARY</p><h1>Bookings & events calendar</h1></div><button class="button" id="refresh-calendar">Refresh</button></div>
+                <div id="operations-calendar" class="calendar-grid"></div>
+                <form id="event-form" class="card inline-form"><label>Event <input name="title" required></label><label>Starts <input name="starts_at" type="datetime-local" required></label><label>Ends <input name="ends_at" type="datetime-local" required></label><label>Category <input name="category" value="conference"></label><label>Visibility <select name="visibility"><option value="staff">Staff only</option><option value="guests">Guests</option><option value="all">Everyone</option></select></label><label>Description <input name="description"></label><button class="button">Add event</button></form>
+            </section>
+            <section id="panel-guest-services" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">DINING SERVICE</p><h1>Breakfast menu & orders</h1></div><button class="button" id="refresh-breakfast">Refresh</button></div>
+                <form id="breakfast-menu-form" class="card inline-form"><label>Menu item <input name="name" required></label><label>Description <input name="description"></label><label>Price (ZAR) <input name="price" type="number" min="0" step="0.01" required></label><label>Dietary tags <input name="dietary_tags" placeholder="Vegetarian, gluten-free"></label><button class="button">Add menu item</button></form>
+                <div class="card"><h2>Published menu</h2><div id="staff-breakfast-menu"></div></div>
+                <div class="card"><label>Service date <input id="breakfast-service-date" type="date"></label><h2>Guest orders</h2><div id="staff-breakfast-orders"></div></div>
+            </section>
+            <section id="panel-announcements" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">GUEST & TEAM MESSAGES</p><h1>Announcements</h1></div></div>
+                <form id="announcement-form" class="card form-grid"><label>Title <input name="title" required maxlength="120"></label><label>Audience <select name="audience"><option value="guests">Guests</option><option value="staff">Staff</option><option value="all">Guests and staff</option></select></label><label>Publish at <input name="starts_at" type="datetime-local"></label><label>Visible until <input name="ends_at" type="datetime-local"></label><label>Message <textarea name="message" required maxlength="2000" rows="4"></textarea></label><button class="button">Publish announcement</button></form>
+                <div class="card"><h2>Recent announcements</h2><div id="announcement-list"></div></div>
+            </section>
+            <section id="panel-team" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">ACCESS CONTROL</p><h1>Team & accounts</h1></div><button class="button" data-refresh>Refresh</button></div>
+                <p class="muted">Only administrators can assign roles. Add team members by having them sign in with Google, then promote their account to staff.</p>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Sign-in providers</th><th>Account access</th><th>Staff position & permissions</th><th>Status</th><th>Save</th></tr></thead><tbody id="user-rows"></tbody></table></div></div>
+            </section>
+            <section id="panel-mail" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">GUEST MESSAGES</p><h1>Email delivery queue</h1></div><button class="button" id="flush-mail">Send queued email</button></div>
+                <div class="card"><div class="table-wrap"><table><thead><tr><th>Created</th><th>To</th><th>Subject</th><th>Status</th><th>Attempts / error</th><th>Action</th></tr></thead><tbody id="email-rows"></tbody></table></div></div>
+            </section>
+            <section id="panel-settings" class="panel">
+                <div class="page-heading"><div><p class="eyebrow">BUSINESS RULES</p><h1>Settings & integrations</h1></div></div>
+                <form id="settings-form" class="card form-grid">
+                    <label class="check-label"><input name="automatic_booking_confirmation" type="checkbox"> Automatically confirm when inventory has capacity</label>
+                    <p class="muted">Use only after inventory, room/venue capacity, prices, and the guest confirmation process have been reviewed. Requests without a mapped inventory option remain pending.</p>
+                    <label>Check-in from <input name="checkin_time" type="time" required></label>
+                    <label>Checkout by <input name="checkout_time" type="time" required></label>
+                    <label>Breakfast starts <input name="breakfast_start" type="time" required></label>
+                    <label>Breakfast ends <input name="breakfast_end" type="time" required></label>
+                    <div id="integration-status"></div>
+                    <button class="button">Save business settings</button>
+                </form>
+            </section>
+        </main>
+    </div>
+    <script src="js/staff.js"></script>
+</body>
+</html>

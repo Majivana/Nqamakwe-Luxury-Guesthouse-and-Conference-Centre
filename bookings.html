@@ -534,8 +534,9 @@
             <div class="form-container">
                 <h2>Make Your <span class="gold-text">Reservation</span></h2>
                 <p>Complete the form below to request a booking. Our team will contact you to confirm availability and provide pricing information.</p>
+                <p id="booking-status" role="status" aria-live="polite">Have an account? <a href="login.html">Sign in</a> first to manage this reservation and your stay online.</p>
                 
-                <form id="booking-form" class="contact-form" action="https://ngqamakweluxuryguesthouse.co.za/bookings.php" method="POST">
+                <form id="booking-form" class="contact-form">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="booking-type">Booking Type *</label>
@@ -596,7 +597,7 @@
                                 <option value="4">4 Guests</option>
                                 <option value="5">5 Guests</option>
                                 <option value="6">6 Guests</option>
-                                <option value="7+">7+ Guests</option>
+                                <option value="7">7+ Guests</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -607,7 +608,7 @@
                                 <option value="2">2 Children</option>
                                 <option value="3">3 Children</option>
                                 <option value="4">4 Children</option>
-                                <option value="5+">5+ Children</option>
+                                <option value="5">5+ Children</option>
                             </select>
                         </div>
                     </div>
@@ -762,6 +763,34 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('checkin-date').min = today;
             document.getElementById('checkout-date').min = today;
+            const bookingType = document.getElementById('booking-type');
+            const bookingOption = document.getElementById('booking-option');
+            let bookableOptions = [];
+            const updateBookableOptions = () => {
+                if (!bookableOptions.length) return;
+                const category = bookingType.value;
+                bookingOption.replaceChildren(new Option('Select option', ''));
+                bookableOptions.filter(item => !category || item.category === category).forEach(item => {
+                    const option = new Option(`${item.name}${item.price_cents == null ? ' · Ask for price' :
+                        ` · ${new Intl.NumberFormat('en-ZA', { style: 'currency', currency: item.currency }).format(item.price_cents / 100)}`}`, item.slug);
+                    option.dataset.category = item.category;
+                    bookingOption.add(option);
+                });
+            };
+            fetch('/api/booking-options', { credentials: 'same-origin' }).then(async response => {
+                if (!response.ok) throw new Error('Business booking catalogue is unavailable.');
+                const data = await response.json();
+                if (!data.options.length) return;
+                bookableOptions = data.options;
+                const categories = [...new Set(bookableOptions.map(item => item.category))];
+                bookingType.replaceChildren(new Option('Select booking type', ''), ...categories.map(category => new Option(
+                    category[0].toUpperCase() + category.slice(1), category
+                )));
+                updateBookableOptions();
+            }).catch(() => {
+                // Keep the brochure defaults available if the operations API is temporarily offline.
+            });
+            bookingType.addEventListener('change', updateBookableOptions);
             
             // Tab functionality
             const tabBtns = document.querySelectorAll('.tab-btn');
@@ -785,6 +814,21 @@
             const bookingForm = document.getElementById('booking-form');
             const successModal = document.getElementById('success-modal');
             const closeModal = document.getElementById('close-modal');
+            const bookingStatus = document.getElementById('booking-status');
+            let signedInGuest = null;
+
+            fetch('/api/me', { credentials: 'same-origin' }).then(async response => {
+                if (!response.ok) return;
+                const { user } = await response.json();
+                signedInGuest = user;
+                for (const [field, value] of Object.entries({ name: user.name, email: user.email, phone: user.phone })) {
+                    const input = bookingForm.elements[field];
+                    if (input && !input.value) input.value = value || '';
+                }
+                bookingStatus.textContent = `Booking as ${user.name}. Your reservation will appear in your guest account.`;
+            }).catch(() => {
+                bookingStatus.textContent = 'You can request a booking here, or sign in first to manage your stay online.';
+            });
             
             if (bookingForm) {
                 bookingForm.addEventListener('submit', function(e) {
@@ -797,27 +841,36 @@
                     submitBtn.disabled = true;
                     
                     // Create FormData object
-                    const formData = new FormData(this);
-                    
-                    // Send form data using AJAX
-                    fetch('bookings.php', {
+                    const formData = Object.fromEntries(new FormData(this).entries());
+                    formData.guests = Number(formData.guests);
+                    formData.children = Number(formData.children || 0);
+
+                    fetch('/api/bookings', {
                         method: 'POST',
-                        body: formData
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(formData)
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Show success modal
-                            successModal.classList.add('active');
-                            // Reset form
-                            bookingForm.reset();
-                        } else {
-                            alert('There was an error sending your booking request. Please try again or call us directly.');
+                    .then(async response => {
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Unable to submit booking request.');
+                        bookingStatus.textContent = `Request ${data.booking_id} received as ${data.status}. ${data.status === 'pending' ? 'Staff will confirm availability before your stay is booked.' : 'Your reservation is confirmed.'}`;
+                        const modalMessage = successModal.querySelector('.modal-text');
+                        if (modalMessage && data.status === 'confirmed') {
+                            modalMessage.textContent = 'Your reservation is confirmed. We will send the details to your email address.';
+                        } else if (modalMessage) {
+                            modalMessage.textContent = 'Your booking request has been received. We will contact you to confirm availability and provide pricing information.';
+                        }
+                        successModal.classList.add('active');
+                        bookingForm.reset();
+                        if (signedInGuest) {
+                            bookingForm.elements.name.value = signedInGuest.name || '';
+                            bookingForm.elements.email.value = signedInGuest.email || '';
+                            bookingForm.elements.phone.value = signedInGuest.phone || '';
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
-                        alert('There was an error sending your booking request. Please try again or call us directly.');
+                        bookingStatus.textContent = error.message || 'Unable to submit your booking request. Please check your details and try again.';
                     })
                     .finally(() => {
                         // Reset button state
@@ -908,10 +961,13 @@
                             return;
                         }
 
+                        const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
+                            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                        }[char]));
                         let html = '';
                         reviews.slice(0, 6).forEach(review => {
                             const avatar = review.profile_photo_url
-                                ? `<img src="https://ngqamakweluxuryguesthouse.co.za/${review.profile_photo_url}" alt="${review.author_name}" class="reviewer-avatar" loading="lazy">`
+                                ? `<img src="https://ngqamakweluxuryguesthouse.co.za/${escapeHtml(review.profile_photo_url)}" alt="${escapeHtml(review.author_name || 'Google user')}" class="reviewer-avatar" loading="lazy">`
                                 : `<div class="reviewer-avatar">👤</div>`;
 
                             const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
@@ -930,11 +986,11 @@
                                     <div class="review-header">
                                         ${avatar}
                                         <div>
-                                            <div class="review-author">${review.author_name}</div>
+                                            <div class="review-author">${escapeHtml(review.author_name || 'Google user')}</div>
                                             <div class="review-stars">${stars}</div>
                                         </div>
                                     </div>
-                                    <p class="review-text">${displayText}</p>
+                                    <p class="review-text">${escapeHtml(displayText)}</p>
                                     ${isLong ? `<p class="read-more-link"><a href="https://www.google.com/maps/place/?q=place_id:${PLACE_ID}" target="_blank" rel="noopener">Read full review on Google →</a></p>` : ''}
                                     <p class="review-time">${date}</p>
                                 </div>`;

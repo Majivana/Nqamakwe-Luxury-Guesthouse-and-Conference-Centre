@@ -196,23 +196,26 @@
                 document.getElementById('contactForm').addEventListener('submit', function(e) {
                     e.preventDefault();
 
-                    const formData = new FormData(this);
+                    const formData = Object.fromEntries(new FormData(this).entries());
                     const submitBtn = this.querySelector('button[type="submit"]');
                     const originalText = submitBtn.innerHTML;
 
                     submitBtn.innerHTML = 'Sending...';
                     submitBtn.disabled = true;
 
-                    fetch('contact-form.php', {
+                    fetch('/api/inquiries', {
                         method: 'POST',
-                        body: formData
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(formData)
                     })
-                    .then(response => response.json())
-                    .then(data => {
+                    .then(async response => {
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Unable to send your message.');
                         const modal = document.getElementById('messageModal');
                         const modalMessage = document.getElementById('modalMessage');
                         
-                        modalMessage.textContent = data.message;
+                        modalMessage.textContent = 'Thank you. Your message has been received.';
                         modal.style.display = 'flex';
                         
                         submitBtn.innerHTML = originalText;
@@ -222,8 +225,8 @@
                             document.getElementById('contactForm').reset();
                         }
                     })
-                    .catch(error => {
-                        document.getElementById('modalMessage').textContent = 'An unexpected error occurred. Please try again.';
+                    .catch(() => {
+                        document.getElementById('modalMessage').textContent = 'Unable to send your message. Please check your details and try again.';
                         document.getElementById('messageModal').style.display = 'flex';
                         submitBtn.innerHTML = originalText;
                         submitBtn.disabled = false;

@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Set current year in footer
-    document.getElementById('year').textContent = new Date().getFullYear();
+    const year = document.getElementById('year');
+    if (year) year.textContent = new Date().getFullYear();
 
     // Mobile menu toggle
     const hamburger = document.getElementById('hamburger');
@@ -81,8 +82,10 @@ if (heroSlider) {
     heroSlider.addEventListener('mouseleave', () => startSlideShow());
 }
 
-// Start the slideshow
-startSlideShow();
+// The shared script runs on pages that do not contain a hero slider.
+if (slides.length > 0 && dots.length === slides.length) {
+    startSlideShow();
+}
 
     // Testimonials slider
     const testimonials = document.querySelectorAll('.testimonial');
@@ -104,17 +107,18 @@ startSlideShow();
         });
     });
 
-    // Auto testimonial change
-    let testimonialInterval = setInterval(() => {
-        showTestimonial(currentTestimonial + 1);
-    }, 6000);
+    if (testimonials.length > 1 && testimonialDots.length === testimonials.length) {
+        setInterval(() => {
+            showTestimonial(currentTestimonial + 1);
+        }, 6000);
+    }
 
     // Awards slider
     const awards = document.querySelectorAll('.award');
     const awardDots = document.querySelectorAll('.award-dot');
     let currentAward = 0;
 
-    if (awards.length > 0) {
+    if (awards.length > 1 && awardDots.length === awards.length) {
         function showAward(n) {
             awards.forEach(award => award.classList.remove('active'));
             awardDots.forEach(dot => dot.classList.remove('active'));
@@ -296,28 +300,6 @@ startSlideShow();
             this.classList.toggle('active');
         });
     });
-
-    // Contact form submission
-    const contactForm = document.getElementById('contactForm');
-    const formSuccess = document.getElementById('formSuccess');
-
-    if (contactForm) {
-        contactForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Here you would typically send the form data to a server
-            // For demonstration, we'll just show the success message
-            contactForm.style.display = 'none';
-            formSuccess.style.display = 'block';
-            
-            // Reset form after 5 seconds
-            setTimeout(() => {
-                contactForm.style.display = 'grid';
-                formSuccess.style.display = 'none';
-                this.reset();
-            }, 5000);
-        });
-    }
 
     // Smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {

@@ -81,6 +81,7 @@
         <div class="container">
             <h2>Premium <span class="gold-text">Hospitality</span> Services</h2>
             <p>At Ngqamakwe Luxury Guest House, we offer a comprehensive range of services designed to make your stay comfortable, productive, and truly memorable. From our luxurious accommodation to our state-of-the-art conference facilities, every detail is carefully considered to exceed your expectations.</p>
+            <div id="live-catalogue" aria-live="polite"></div>
         </div>
     </section>
 
@@ -614,10 +615,13 @@
                             return;
                         }
 
+                        const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
+                            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                        }[char]));
                         let html = '';
                         reviews.slice(0, 6).forEach(review => {
                             const avatar = review.profile_photo_url
-                                ? `<img src="https://ngqamakweluxuryguesthouse.co.za/${review.profile_photo_url}" alt="${review.author_name}" class="reviewer-avatar" loading="lazy">`
+                                ? `<img src="https://ngqamakweluxuryguesthouse.co.za/${escapeHtml(review.profile_photo_url)}" alt="${escapeHtml(review.author_name || 'Google user')}" class="reviewer-avatar" loading="lazy">`
                                 : `<div class="reviewer-avatar">👤</div>`;
 
                             const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
@@ -636,11 +640,11 @@
                                     <div class="review-header">
                                         ${avatar}
                                         <div>
-                                            <div class="review-author">${review.author_name}</div>
+                                            <div class="review-author">${escapeHtml(review.author_name || 'Google user')}</div>
                                             <div class="review-stars">${stars}</div>
                                         </div>
                                     </div>
-                                    <p class="review-text">${displayText}</p>
+                                    <p class="review-text">${escapeHtml(displayText)}</p>
                                     ${isLong ? `<p class="read-more-link"><a href="https://www.google.com/maps/place/?q=place_id:${PLACE_ID}" target="_blank" rel="noopener">Read full review on Google →</a></p>` : ''}
                                     <p class="review-time">${date}</p>
                                 </div>`;
@@ -661,5 +665,6 @@
         document.getElementById('year').textContent = new Date().getFullYear();
     </script>
     <script src="js/script.js"></script>
+    <script src="js/public-catalogue.js"></script>
 </body>
 </html>
