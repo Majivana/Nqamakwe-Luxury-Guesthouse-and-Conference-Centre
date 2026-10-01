@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+  document.addEventListener("contextmenu", e => e.preventDefault());
+</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gallery of Ngqamakwe Luxury Guest House - view photos of our luxury accommodation, pool with mountain views, conference facilities and beautiful surroundings.">
+    <title>Gallery | Ngqamakwe Luxury Guest House - Photo Tour of Our Facilities</title>
+    <link rel="stylesheet" href="css/style.css">
+	
+	<style>
+        /* Modern Lightbox Styles */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .lightbox.active {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .lightbox-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            width: auto;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .lightbox-media {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+        
+        .lightbox-media.zoomed {
+            transform: scale(1.5);
+            cursor: zoom-out;
+        }
+        
+        .lightbox-caption {
+            color: white;
+            text-align: center;
+            margin-top: 20px;
+            max-width: 80%;
+        }
+        
+        .lightbox-caption h3 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            color: #D4AF37;
+        }
+        
+        .close-lightbox {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            color: white;
+            font-size: 35px;
+            cursor: pointer;
+            z-index: 1001;
+            transition: transform 0.2s ease;
+        }
+        
+        .close-lightbox:hover {
+            transform: scale(1.2);
+        }
+        
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            transform: translateY(-50%);
+            z-index: 1001;
+        }
+        
+        .lightbox-prev, .lightbox-next {
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        
+        .lightbox-prev:hover, .lightbox-next:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.1);
+        }
+        
+        /* Video specific styles */
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            margin-bottom: 15px;
+        }
+        
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        /* Gallery grid adjustments */
+        .gallery-item {
+            cursor: zoom-in;
+            transition: transform 0.3s ease;
+        }
+        
+        .gallery-item:hover {
+            transform: scale(1.02);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .lightbox-media {
+                max-height: 60vh;
+            }
+            
+            .lightbox-prev, .lightbox-next {
+                width: 50px;
+                height: 50px;
+                font-size: 30px;
+            }
+            
+            .close-lightbox {
+                top: 15px;
+                right: 15px;
+                font-size: 30px;
+            }
+        }
+    </style>
+	
+    <link rel="icon" href="https://ngqamakweluxuryguesthouse.co.za/images/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="57x57" href="https://ngqamakweluxuryguesthouse.co.za/apple-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="images/favicon.ico/apple-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="images/favicon.ico/apple-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="images/favicon.ico/apple-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="images/favicon.ico/apple-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="images/favicon.ico/apple-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="images/favicon.ico/apple-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="images/favicon.ico/apple-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="images/favicon.ico/apple-icon-180x180.png">
+<link rel="icon" type="image/png" sizes="192x192"  href="images/favicon.ico/android-icon-192x192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="images/favicon.ico/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="images/favicon.ico/favicon-96x96.png">
+<link rel="icon" type="image/png" sizes="16x16" href="images/favicon.ico/favicon-16x16.png">
+<link rel="manifest" href="images/favicon.ico/manifest.json">
+<meta name="msapplication-TileColor" content="#ffffff">
+<meta name="msapplication-TileImage" content="images/favicon.ico/ms-icon-144x144.png">
+<meta name="theme-color" content="#ffffff">
+</head>
+<body>
+    <header class="main-header">
+        <div class="container">
+            <div class="logo">
+                <a href="index.html" class="logo-link">
+                    <h1><span class="gold-text">Ngqamakwe</span> <span class="red-text">Luxury</span></h1>
+                    <p>Guest House & Conference Centre</p>
+                </a>
+            </div>
+            <nav class="main-nav">
+                <div class="hamburger" id="hamburger">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                </div>
+                <ul class="nav-list" id="nav-list">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="about.html">About Us</a></li>
+                    <li><a href="services.html">Services</a></li>
+                    <li class="active"><a href="gallery.html">Gallery</a></li>
+                    <li><a href="contact.html">Contact Us</a></li>
+                    <li class="booking-btn">
+                        <a href="bookings.html" class="btn gold-bg">Book Now</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="page-hero" style="background-image: url('images/gallery/gallery-hero.png');">
+        <div class="container">
+            <h1>Our <span class="gold-text">Gallery</span></h1>
+            <p>A visual journey through Ngqamakwe Luxury</p>
+        </div>
+    </section>
+
+    <section class="gallery-intro">
+        <div class="container">
+            <h2>Explore Our <span class="gold-text">World</span></h2>
+            <p>Take a visual tour of Ngqamakwe Luxury Guest House and Conference Centre through our gallery showcasing our premium accommodation, stunning views, exceptional facilities, and the natural beauty that surrounds us.</p>
+        </div>
+    </section>
+
+    <section class="gallery-filter">
+        <div class="container">
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="accommodation">Accommodation</button>
+                <button class="filter-btn" data-filter="conference">Conference</button>
+                <button class="filter-btn" data-filter="dining">Dining</button>
+                <button class="filter-btn" data-filter="guests">Our Guests</button>
+                <button class="filter-btn" data-filter="views">Views</button>
+                <button class="filter-btn" data-filter="pool">Pool Area</button>
+                <button class="filter-btn" data-filter="wellness">Wellness</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="gallery-grid">
+        <div class="container">
+            <div class="grid-container">
+                <!-- Original Images (Kept as requested) -->
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/room-1.jpg" alt="Luxury Suite at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item pool" data-category="pool">
+                    <img src="images/gallery/pool-1.jpg" alt="Infinity Pool at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/conference-1.jpg" alt="Conference Room at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/view-1.jpg" alt="Mountain View from Terrace" loading="lazy">
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/dining-1.jpg" alt="Dining Area at Ngqamakwe" loading="lazy">
+                </div>
+                
+                <div class="gallery-item pool" data-category="pool">
+                    <img src="images/gallery/pool-2.jpg" alt="Poolside Lounge Area" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/room-2-poster.jpg" loading="lazy">
+                            <source src="images/gallery/room-2.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                
+                <div class="gallery-item views" data-category="views">
+                    <div class="video-container">
+                        <video controls poster="images/gallery/view-2-poster.jpg" loading="lazy">
+                            <source src="images/gallery/view-2.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/dining-2.jpg" alt="Breakfast Buffet" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/conference-2.jpg" alt="Conference Break Area" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/room-3.jpg" alt="Bathroom in Luxury Suite" loading="lazy">
+                </div>
+                
+                <!-- New Accommodation Images (a1 to a10) -->
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/a1.jpg" alt="Accommodation at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/a2.jpg" alt="Accommodation at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/a3-poster.jpg" loading="lazy">
+                            <source src="images/gallery/a3.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/a4.jpg" alt="Accommodation at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/a5.jpg" alt="Accommodation at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/a6.jpg" alt="Accommodation at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/a7.jpg" alt="Accommodation at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/a8.jpg" alt="Accommodation at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/a9.jpg" alt="Accommodation at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item accommodation" data-category="accommodation">
+                    <img src="images/gallery/a10.jpg" alt="Accommodation at Ngqamakwe" loading="lazy">
+                </div>
+                
+                <!-- New Conference Images (c1 to c27) -->
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c1.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c2.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c3.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c4.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c5.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c6.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c7.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c8.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/c9-poster.jpg" loading="lazy">
+                            <source src="images/gallery/c9.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/c10-poster.jpg" loading="lazy">
+                            <source src="images/gallery/c10.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/c11-poster.jpg" loading="lazy">
+                            <source src="images/gallery/c11.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/c12-poster.jpg" loading="lazy">
+                            <source src="images/gallery/c12.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <!-- Additional conference images (c13 to c27) -->
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c13.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c14.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c15.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c16.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c17.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c18.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c19.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c20.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c21.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c22.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c23.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c24.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c25.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c26.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item conference" data-category="conference">
+                    <img src="images/gallery/c27.jpg" alt="Conference Facilities at Ngqamakwe" loading="lazy">
+                </div>
+                
+                <!-- New Dining Images (d1 to d12) -->
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d1.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d2.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d3.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d4.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>                
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d6.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d7.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d8.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d9.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d10.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/d11-poster.jpg" loading="lazy">
+                            <source src="images/gallery/d11.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item dining" data-category="dining">
+                    <img src="images/gallery/d12.jpg" alt="Dining at Ngqamakwe" loading="lazy">
+                </div>
+                
+                <!-- New Our Guests Images (g1 to g39) -->
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g1.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g2.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g3.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g4.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g5.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g6.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g7.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g8.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g9.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g10.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g11.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g12.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g13.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g14.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g15.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g16.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g17.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g18.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g19.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g20.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g21.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g22.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g23.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g24.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g25.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g26.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g27.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <!-- Guest videos (g28 to g33) -->
+                <div class="gallery-item guests" data-category="guests">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/g28-poster.jpg" loading="lazy">
+                            <source src="images/gallery/g28.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/g29-poster.jpg" loading="lazy">
+                            <source src="images/gallery/g29.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/g30-poster.jpg" loading="lazy">
+                            <source src="images/gallery/g30.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/g31-poster.jpg" loading="lazy">
+                            <source src="images/gallery/g31.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/g32-poster.jpg" loading="lazy">
+                            <source src="images/gallery/g32.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <div class="video-container">
+                        <video controls poster="https://ngqamakweluxuryguesthouse.co.za/images/gallery/g33-poster.jpg" loading="lazy">
+                            <source src="images/gallery/g33.mp4" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                </div>
+                <!-- Additional guest images (g34 to g39) -->
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g34.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g35.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g36.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g37.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g38.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item guests" data-category="guests">
+                    <img src="images/gallery/g39.jpg" alt="Our Guests at Ngqamakwe" loading="lazy">
+                </div>
+                
+                <!-- New Pool Images (p1 to p6) -->
+                <div class="gallery-item pool" data-category="pool">
+                    <img src="images/gallery/p1.jpg" alt="Pool at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item pool" data-category="pool">
+                    <img src="images/gallery/p2.jpg" alt="Pool at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item pool" data-category="pool">
+                    <img src="images/gallery/p3.jpg" alt="Pool at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item pool" data-category="pool">
+                    <img src="images/gallery/p4.jpg" alt="Pool at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item pool" data-category="pool">
+                    <img src="images/gallery/p5.jpg" alt="Pool at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item pool" data-category="pool">
+                    <img src="images/gallery/p6.jpg" alt="Pool at Ngqamakwe" loading="lazy">
+                </div>
+                
+                <!-- New Views Images (v1 to v15) -->
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v1.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v2.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v3.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v4.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v5.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v6.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v7.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v8.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v9.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v10.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v11.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v12.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v13.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v14.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item views" data-category="views">
+                    <img src="images/gallery/v15.jpg" alt="Views at Ngqamakwe" loading="lazy">
+                </div>
+                
+                <!-- New Wellness Images (w1 to w6) -->
+                <div class="gallery-item wellness" data-category="wellness">
+                    <img src="images/gallery/w1.jpg" alt="Wellness at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item wellness" data-category="wellness">
+                    <img src="images/gallery/w2.jpg" alt="Wellness at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item wellness" data-category="wellness">
+                    <img src="images/gallery/w3.jpg" alt="Wellness at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item wellness" data-category="wellness">
+                    <img src="images/gallery/w4.jpg" alt="Wellness at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item wellness" data-category="wellness">
+                    <img src="images/gallery/w5.jpg" alt="Wellness at Ngqamakwe" loading="lazy">
+                </div>
+                <div class="gallery-item wellness" data-category="wellness">
+                    <img src="images/gallery/w6.jpg" alt="Wellness at Ngqamakwe" loading="lazy">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="video-tour">
+        <div class="container">
+            <h2>Virtual <span class="gold-text">Tour</span></h2>
+            <div class="video-container">
+                <video controls poster="images/gallery/video-poster.jpg" loading="lazy">
+                    <source src="images/gallery/hotel-tour.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <p>Take a virtual tour of Ngqamakwe Luxury Guest House and experience our facilities before your visit.</p>
+        </div>
+    </section>
+
+    <section class="gallery-cta">
+        <div class="container">
+            <h2>Inspired by What You <span class="gold-text">See?</span></h2>
+            <p>Book your stay at Ngqamakwe Luxury Guest House and Conference Centre and experience the beauty firsthand</p>
+            <a href="bookings.html" class="btn gold-bg">Book Now</a>
+        </div>
+    </section>
+
+    <footer class="main-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-about">
+                    <h3>About Us</h3>
+                    <p>Ngqamakwe Luxury Guest House and Conference Centre offers premium accommodation with stunning mountain views in Ngqamakwe, Eastern Cape.</p>
+                    <div class="social-links">
+                        <a href="https://www.facebook.com/profile.php?id=61557539964316" target="_blank" aria-label="Facebook">
+                            <img src="assets/icons/facebook.png" alt="Facebook">
+                        </a>
+                        <a href="https://www.instagram.com/ngqamakweguesthouse49453/" target="_blank" aria-label="Instagram">
+                            <img src="assets/icons/instagram.png" alt="Instagram">
+                        </a>
+                        <a href="https://twitter.com" target="_blank" aria-label="Twitter">
+                            <img src="assets/icons/twitter.png" alt="Twitter">
+                        </a>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="about.html">About Us</a></li>
+                        <li><a href="services.html">Services</a></li>
+                        <li><a href="contact.html">Contact Us</a></li>
+                        <li><a href="login.html">Login</a></li>
+                    </ul>
+                </div>
+                <div class="footer-contact">
+                    <h3>Contact Us</h3>
+                    <p><span>📍</span> Nobhanda, Mission, Ngqamakhwe,<br>Eastern Cape, 4990</br></p>
+                    <p><span>📞</span> +27 64 764 7265</p>
+                    <p><span>✉️</span> bookings@ngqamakweluxuryguesthouse.co.za</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; <span id="year"></span> Ngqamakwe Luxury Guest House and Conference Centre. All Rights Reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Lightbox Modal -->
+    <div class="lightbox" id="lightbox">
+        <span class="close-lightbox">&times;</span>
+        <div class="lightbox-content">
+            <!-- For images -->
+            <img src="gallery.html" alt="" id="lightbox-image" class="lightbox-media">
+            
+            <!-- For videos -->
+            <video controls id="lightbox-video" class="lightbox-media">
+                <source src="gallery.html" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            
+            <div class="lightbox-caption">
+                <h3 id="lightbox-title"></h3>
+                <p id="lightbox-description"></p>
+            </div>
+        </div>
+        <div class="lightbox-nav">
+            <button class="lightbox-prev">&#10094;</button>
+            <button class="lightbox-next">&#10095;</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Lightbox functionality
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImage = document.getElementById('lightbox-image');
+            const lightboxVideo = document.getElementById('lightbox-video');
+            const lightboxTitle = document.getElementById('lightbox-title');
+            const lightboxDesc = document.getElementById('lightbox-description');
+            const closeBtn = document.querySelector('.close-lightbox');
+            const prevBtn = document.querySelector('.lightbox-prev');
+            const nextBtn = document.querySelector('.lightbox-next');
+            
+            // Get all gallery items
+            const galleryItems = document.querySelectorAll('.gallery-item');
+            let currentIndex = 0;
+            let currentMedia = null;
+            
+            // Open lightbox
+            function openLightbox(index) {
+                currentIndex = index;
+                const item = galleryItems[currentIndex];
+                const media = item.querySelector('img, .video-container video');
+                
+                // Hide all media first
+                lightboxImage.style.display = 'none';
+                lightboxVideo.style.display = 'none';
+                
+                if (media.tagName === 'IMG') {
+                    lightboxImage.src = media.src;
+                    lightboxImage.style.display = 'block';
+                    lightboxImage.classList.remove('zoomed');
+                    currentMedia = lightboxImage;
+                    
+                    // Set caption based on alt text
+                    lightboxTitle.textContent = media.alt;
+                    lightboxDesc.textContent = '';
+                } else if (media.tagName === 'VIDEO') {
+                    const source = media.querySelector('source');
+                    lightboxVideo.querySelector('source').src = source.src;
+                    lightboxVideo.load();
+                    lightboxVideo.style.display = 'block';
+                    currentMedia = lightboxVideo;
+                    
+                    // Set caption based on video context
+                    const category = item.getAttribute('data-category');
+                    lightboxTitle.textContent = category.charAt(0).toUpperCase() + category.slice(1) + ' Video Tour';
+                    lightboxDesc.textContent = '';
+                }
+                
+                // Show lightbox
+                lightbox.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                
+                // Pause any playing videos when opening new media
+                if (currentMedia.tagName === 'VIDEO') {
+                    currentMedia.play();
+                }
+            }
+            
+            // Close lightbox
+            function closeLightbox() {
+                lightbox.classList.remove('active');
+                document.body.style.overflow = 'auto';
+                
+                // Pause video if playing
+                if (currentMedia && currentMedia.tagName === 'VIDEO') {
+                    currentMedia.pause();
+                }
+            }
+            
+            // Navigation
+            function showPrev() {
+                currentIndex = (currentIndex - 1 + galleryItems.length) % galleryItems.length;
+                openLightbox(currentIndex);
+            }
+            
+            function showNext() {
+                currentIndex = (currentIndex + 1) % galleryItems.length;
+                openLightbox(currentIndex);
+            }
+            
+            // Toggle zoom on image
+            function toggleZoom() {
+                if (currentMedia === lightboxImage) {
+                    currentMedia.classList.toggle('zoomed');
+                }
+            }
+            
+            // Event listeners
+            galleryItems.forEach((item, index) => {
+                item.addEventListener('click', () => openLightbox(index));
+            });
+            
+            closeBtn.addEventListener('click', closeLightbox);
+            prevBtn.addEventListener('click', showPrev);
+            nextBtn.addEventListener('click', showNext);
+            
+            // Click on image to zoom
+            lightboxImage.addEventListener('click', toggleZoom);
+            
+            // Close when clicking outside content
+            lightbox.addEventListener('click', function(e) {
+                if (e.target === lightbox) {
+                    closeLightbox();
+                }
+            });
+            
+            // Keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (lightbox.classList.contains('active')) {
+                    if (e.key === 'Escape') closeLightbox();
+                    if (e.key === 'ArrowLeft') showPrev();
+                    if (e.key === 'ArrowRight') showNext();
+                    if (e.key === ' ' && currentMedia === lightboxImage) {
+                        e.preventDefault();
+                        toggleZoom();
+                    }
+                }
+            });
+            
+            // Prevent video click from bubbling to gallery item
+            document.querySelectorAll('.video-container video').forEach(video => {
+                video.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            });
+            
+            // Filter functionality
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Update active button
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const filter = this.getAttribute('data-filter');
+                    
+                    galleryItems.forEach(item => {
+                        if (filter === 'all' || item.getAttribute('data-category') === filter) {
+                            item.style.display = 'block';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+
+    <a href="https://wa.me/27123456789" class="whatsapp-btn" target="_blank">
+        <img src="assets/icons/whatsapp.png" alt="Chat on WhatsApp">
+    </a>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
