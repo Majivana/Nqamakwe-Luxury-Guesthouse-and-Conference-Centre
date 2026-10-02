@@ -304,10 +304,37 @@ test("valid booking is saved as a pending reservation", async () => {
 
 test("website is served without exposing backend files", async () => {
   const login = await request(app).get("/login.html");
+  const stylesheet = await request(app).get("/css/style.css");
   const backendManifest = await request(app).get("/package.json");
   assert.equal(login.status, 200);
+  assert.match(login.headers["cache-control"], /max-age=0/);
+  assert.equal(stylesheet.status, 200);
+  assert.match(stylesheet.headers["cache-control"], /max-age=3600/);
   assert.match(login.text, /Sign in or create an account/);
   assert.equal(backendManifest.status, 404);
+});
+
+test("staff calendar omits guest identity and API responses are not cacheable", async () => {
+  const worker = authenticatedRequest(makeUser("staff", "housekeeping"));
+  const checkin = new Date(`${businessToday()}T00:00:00Z`);
+  checkin.setUTCDate(checkin.getUTCDate() + 10);
+  const checkout = new Date(checkin);
+  checkout.setUTCDate(checkout.getUTCDate() + 2);
+  const bookingId = Number(db.prepare(`
+    INSERT INTO bookings (
+      booking_type, booking_option, checkin_date, checkout_date, guests,
+      name, email, phone, status
+    ) VALUES ('accommodation', 'private-calendar-room', ?, ?, 1,
+      'Calendar Privacy Guest', 'calendar-privacy@example.com', '555-0100', 'pending')
+  `).run(checkin.toISOString().slice(0, 10), checkout.toISOString().slice(0, 10)).lastInsertRowid);
+  const calendar = await worker.get("/api/staff/calendar");
+  assert.equal(calendar.status, 200);
+  assert.equal(calendar.headers["cache-control"], "no-store");
+  const visibleBooking = calendar.body.bookings.find((item) => item.id === bookingId);
+  assert.ok(visibleBooking);
+  assert.equal(Object.hasOwn(visibleBooking, "name"), false);
+  assert.equal(Object.hasOwn(visibleBooking, "email"), false);
+  assert.equal(Object.hasOwn(visibleBooking, "phone"), false);
 });
 
 test("staff console routes are served but staff APIs remain role protected", async () => {

@@ -22,4 +22,12 @@
 - The API accepts browser writes only from its own origin, uses HTTP-only/SameSite session cookies, caps JSON payloads, and limits public submissions. Use HTTPS and set `TRUST_PROXY` correctly behind a reverse proxy.
 - The content security policy permits inline scripts/styles to preserve the existing pages; removing those allowances requires first moving legacy inline code into vetted static assets.
 - SQLite data and session files include personal information. Restrict file access, establish encrypted backups and retention/deletion procedures, and never expose the data directory from the web server.
-- The API currently records requests but does not send email, check room/venue inventory, confirm bookings, or process payments.
+- The operations backend now provides a persistent email outbox, inventory availability checks, staff-managed booking confirmation, and Yoco hosted checkout. Live provider setup and reconciliation still require owner configuration.
+
+## Follow-up security and performance review (2 October 2026)
+
+- **Fixed, medium:** the shared staff calendar no longer returns guest names. Calendar access is granted to housekeeping and general-worker roles, whose documented calendar is non-identifying; a regression test verifies the response omits guest contact fields.
+- **Fixed, hardening:** API responses are marked `Cache-Control: no-store`; only public static assets are cached for one hour, and HTML remains revalidatable. Gallery videos use `preload="none"` to avoid requesting video media before playback.
+- **Outstanding, low:** Google Maps browser keys appear in the public page source by design. Verify each key is restricted by HTTP referrer and only the required Maps APIs; rotate it if its restrictions or usage are unknown.
+- Source inspection found no upload endpoints, Docker/deployment manifests, or CI workflow. No Lighthouse installation or configured live deployment is present, so this review does not claim live-host, Core Web Vitals, or production-provider measurements. The checked-in image directory is approximately 134 MiB, including 15 gallery videos (approximately 68.8 MiB); optimize and measure image/video delivery against production traffic before adding a CDN or changing media quality.
+- Dependency audit reported no known vulnerabilities at review time. `npm test` passed all 33 integration tests; JavaScript syntax and `git diff --check` passed. Live OAuth, SMTP, Yoco, hosting headers, and browser performance were not tested.

@@ -709,7 +709,7 @@ function registerBusinessRoutes(app, { db, env, requireAuth, mailer, fetchImpl }
     }
     const bookings = db.prepare(`
       SELECT id, booking_option AS title, booking_type AS category, checkin_date AS starts_at,
-        checkout_date AS ends_at, status, name, id AS booking_id
+        checkout_date AS ends_at, status, id AS booking_id
       FROM bookings WHERE status IN ('confirmed', 'pending') AND checkin_date <= ?
         AND checkout_date >= ? ORDER BY checkin_date LIMIT 500
     `).all(to, from);

@@ -99,7 +99,10 @@ function createApp(options = {}) {
     standardHeaders: "draft-8",
     legacyHeaders: false
   });
-  app.use("/api", apiLimiter);
+  app.use("/api", (req, res, next) => {
+    res.setHeader("Cache-Control", "no-store");
+    next();
+  }, apiLimiter);
 
   function finishOAuthLogin(req, res, next, error, user, linking = false) {
     if (error) {
@@ -454,11 +457,12 @@ function createApp(options = {}) {
 
   const webRoot = path.resolve(options.webRoot || path.join(__dirname, ".."));
   const pagePattern = /^\/(?:index|about|services|gallery|contact|bookings|login|staff)\.html$/;
+  const servePage = express.static(webRoot, { dotfiles: "deny", index: false });
+  const serveAsset = express.static(webRoot, { dotfiles: "deny", index: false, maxAge: "1h" });
   app.use((req, res, next) => {
     if (req.path === "/") req.url = "/index.html";
-    if (pagePattern.test(req.path) || /^\/(?:css|js|images|assets)\//.test(req.path)) {
-      return express.static(webRoot, { dotfiles: "deny", index: false })(req, res, next);
-    }
+    if (pagePattern.test(req.path)) return servePage(req, res, next);
+    if (/^\/(?:css|js|images|assets)\//.test(req.path)) return serveAsset(req, res, next);
     next();
   });
 

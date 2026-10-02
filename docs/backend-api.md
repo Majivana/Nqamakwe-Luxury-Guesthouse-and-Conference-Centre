@@ -106,6 +106,10 @@ See Yoco's [Checkout API guide](https://developer.yoco.com/guides/online-payment
 
 Guest-facing reminders are stored in-app and scheduled by the application worker; email reminders enter the durable outbox when due. Email requires SMTP. Check-in/out confirmations are operational records only and do not replace reception identity verification or physical key handover. Breakfast orders are associated with a stay and dated menu item; configure the real menu and prices before collecting orders.
 
+## Browser performance and cache policy
+
+API responses use `Cache-Control: no-store`, including authenticated account and staff data. HTML remains immediately revalidatable (`max-age=0`); public CSS, JavaScript, and image assets are cached for one hour. Gallery videos use `preload="none"` so media bytes are requested only after a visitor chooses playback. Asset filenames are not content-hashed, so avoid extending their cache lifetime without adding versioned filenames or a deployment purge strategy.
+
 ## Operational limitations and launch requirements
 
 - Real OAuth, SMTP, Yoco, callback-domain, email consent, and live-merchant checks require owner credentials and cannot be completed in this repository.
