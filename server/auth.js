@@ -109,7 +109,7 @@ function configurePassport(passport, db, env) {
   passport.deserializeUser((id, done) => {
     try {
       const user = db.prepare(`
-        SELECT id, name, email, phone, role, status, staff_role, created_at
+        SELECT id, name, email, phone, username, role, status, staff_role, created_at
         FROM users WHERE id = ?
       `).get(id);
       done(null, user || false);

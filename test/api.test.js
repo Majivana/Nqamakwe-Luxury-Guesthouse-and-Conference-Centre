@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const vm = require("node:vm");
 const cookieSignature = require("cookie-signature");
 const session = require("express-session");
 const { Passport } = require("passport");
@@ -12,6 +13,7 @@ const { createApp } = require("../server/app");
 const { buildVerifyCallback } = require("../server/auth");
 const { createDatabase } = require("../server/db");
 const { enqueueEmail, flushEmailOutbox } = require("../server/email");
+const { hashPassword } = require("../server/password-auth");
 const { SQLiteSessionStore } = require("../server/sqlite-session-store");
 const { verifyYocoWebhook } = require("../server/yoco");
 
@@ -133,6 +135,8 @@ test("SQLite startup migration is safe to rerun and preserves existing users", (
   const migrated = createDatabase(filename);
   assert.equal(migrated.prepare("SELECT name FROM users WHERE id = ?").get(id).name, "Existing guest");
   assert.ok(migrated.prepare("PRAGMA table_info(bookings)").all().some((column) => column.name === "resource_id"));
+  assert.ok(migrated.prepare("PRAGMA table_info(users)").all().some((column) => column.name === "password_hash"));
+  assert.ok(migrated.prepare("PRAGMA table_info(users)").all().some((column) => column.name === "username"));
   assert.ok(migrated.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'email_outbox'").get());
   migrated.close();
 });
@@ -178,6 +182,176 @@ test("unconfigured social providers return a clear unavailable response", async 
   assert.equal(facebook.status, 503);
 });
 
+test("local registration and username/email login use secure customer credentials", async () => {
+  const browser = request.agent(app);
+  const registered = await browser.post("/api/auth/register").send({
+    name: "Password Guest", email: "password-guest@example.com",
+    username: "password.guest", password: "sixsix",
+    role: "admin", staff_role: "director"
+  });
+  assert.equal(registered.status, 201, JSON.stringify(registered.body));
+  assert.equal(registered.body.user.role, "customer");
+  assert.equal(registered.body.user.username, "password.guest");
+  assert.equal(Object.hasOwn(registered.body.user, "password_hash"), false);
+  assert.equal((await browser.get("/api/me")).body.user.id, registered.body.user.id);
+  assert.equal((await browser.get("/api/staff/session")).status, 403);
+  const saved = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(registered.body.user.id);
+  assert.match(saved.password_hash, /^scrypt\$16384\$8\$1\$/);
+  assert.notEqual(saved.password_hash, "sixsix");
+
+  const duplicate = await request(app).post("/api/auth/register").send({
+    name: "Duplicate Guest", email: "password-guest@example.com",
+    username: "another-user", password: "sixsix"
+  });
+  assert.equal(duplicate.status, 400);
+  const weakPassword = await request(app).post("/api/auth/register").send({
+    name: "Weak Guest", email: "weak-password@example.com",
+    username: "weak.guest", password: "12345"
+  });
+  assert.equal(weakPassword.status, 400);
+
+  const emailLogin = request.agent(app);
+  const signedIn = await emailLogin.post("/api/auth/login").send({
+    identifier: "PASSWORD-GUEST@example.com", password: "sixsix"
+  });
+  assert.equal(signedIn.status, 200, JSON.stringify(signedIn.body));
+  assert.equal(signedIn.body.redirect, "/login.html?authenticated=1");
+  assert.equal((await emailLogin.get("/api/me")).body.user.id, registered.body.user.id);
+  const usernameLogin = await request(app).post("/api/auth/login").send({
+    identifier: "password.guest", password: "sixsix"
+  });
+  assert.equal(usernameLogin.status, 200);
+  const wrongPassword = await request(app).post("/api/auth/login").send({
+    identifier: "password.guest", password: "wrong-password-is-long"
+  });
+  assert.equal(wrongPassword.status, 401);
+  assert.deepEqual(wrongPassword.body, { error: "Invalid username/email or password." });
+  const unknownUsername = await request(app).post("/api/auth/login").send({
+    identifier: "not-a-real-user", password: "wrong-password-is-long"
+  });
+  assert.equal(unknownUsername.status, 401);
+  assert.deepEqual(unknownUsername.body, wrongPassword.body);
+});
+
+test("socially signed-in users can set password credentials after recent authentication", async () => {
+  const userId = makeUser();
+  const socialUser = authenticatedRequest(userId);
+  const updated = await socialUser.post("/api/account/password").send({
+    username: "linked.password", password: "sixsix"
+  });
+  assert.equal(updated.status, 200, JSON.stringify(updated.body));
+  assert.equal(updated.body.username, "linked.password");
+  const localLogin = await request(app).post("/api/auth/login").send({
+    identifier: "linked.password", password: "sixsix"
+  });
+  assert.equal(localLogin.status, 200);
+  const unauthenticated = await request(app).post("/api/account/password").send({
+    username: "someone.else", password: "sixsix"
+  });
+  assert.equal(unauthenticated.status, 401);
+});
+
+test("six-character administrator password opens staff and admin endpoints", async () => {
+  const passwordHash = await hashPassword("sixsix");
+  const userId = Number(db.prepare(`
+    INSERT INTO users (name, email, username, password_hash, role, staff_role)
+    VALUES (?, ?, ?, ?, 'admin', 'director')
+  `).run("Local administrator", "local-admin@example.com", "local.admin", passwordHash).lastInsertRowid);
+  const authApp = createApp({
+    db,
+    passport: new Passport(),
+    sessionStore: new session.MemoryStore(),
+    sessionSecret: "six-character-admin-session-secret",
+    env: { NODE_ENV: "test", SESSION_SECRET: "six-character-admin-session-secret" }
+  });
+  const browser = request.agent(authApp);
+  const login = await browser.post("/api/auth/login").send({
+    identifier: "local.admin", password: "sixsix"
+  });
+  assert.equal(login.status, 200, JSON.stringify(login.body));
+  assert.equal(login.body.user.id, userId);
+  assert.equal(login.body.redirect, "/staff.html");
+  assert.equal((await browser.get("/api/staff/session")).status, 200);
+  assert.equal((await browser.get("/api/staff/dashboard")).status, 200);
+  assert.equal((await browser.get("/api/admin/users")).status, 200);
+});
+
+test("password reset emails a one-time token and changes the password", async () => {
+  const email = `reset-${crypto.randomUUID()}@example.com`;
+  const username = `reset.${crypto.randomUUID().slice(0, 8)}`;
+  const originalHash = await hashPassword("original-password");
+  const userId = Number(db.prepare(`
+    INSERT INTO users (name, email, username, password_hash)
+    VALUES (?, ?, ?, ?)
+  `).run("Password reset user", email, username, originalHash).lastInsertRowid);
+  const sentMessages = [];
+  const resetApp = createApp({
+    db,
+    passport: new Passport(),
+    sessionStore: new session.MemoryStore(),
+    sessionSecret: "password-reset-test-session-secret",
+    mailer: {
+      mailFrom: "Guest House <bookings@example.com>",
+      async sendMail(message) { sentMessages.push(message); }
+    },
+    env: {
+      NODE_ENV: "test",
+      SESSION_SECRET: "password-reset-test-session-secret",
+      BASE_URL: "http://localhost:3000"
+    }
+  });
+
+  const unknown = await request(resetApp).post("/api/auth/password-reset/request")
+    .send({ email: "unknown@example.com" });
+  const requested = await request(resetApp).post("/api/auth/password-reset/request")
+    .send({ email: email.toUpperCase() });
+  assert.equal(unknown.status, 200);
+  assert.deepEqual(requested.body, unknown.body);
+  assert.equal(sentMessages.length, 1);
+  assert.equal(sentMessages[0].to, email);
+  const token = sentMessages[0].text.match(/login\.html\?reset=([a-f0-9]{64})/)?.[1];
+  assert.ok(token);
+  const storedToken = db.prepare("SELECT token_hash FROM password_reset_tokens WHERE user_id = ?").get(userId);
+  assert.equal(storedToken.token_hash, crypto.createHash("sha256").update(token).digest("hex"));
+  assert.notEqual(storedToken.token_hash, token);
+
+  const weak = await request(resetApp).post("/api/auth/password-reset/confirm")
+    .send({ token, password: "12345" });
+  assert.equal(weak.status, 400);
+  const changed = await request(resetApp).post("/api/auth/password-reset/confirm")
+    .send({ token, password: "replacement-password" });
+  assert.equal(changed.status, 200, JSON.stringify(changed.body));
+  assert.equal((await request(resetApp).post("/api/auth/password-reset/confirm")
+    .send({ token, password: "another-password" })).status, 400);
+  assert.equal((await request(resetApp).post("/api/auth/login")
+    .send({ identifier: username, password: "original-password" })).status, 401);
+  assert.equal((await request(resetApp).post("/api/auth/login")
+    .send({ identifier: username, password: "replacement-password" })).status, 200);
+});
+
+test("login rate limit returns a clear JSON error", async () => {
+  const limitedApp = createApp({
+    db,
+    passport: new Passport(),
+    sessionStore: new session.MemoryStore(),
+    sessionSecret: "login-rate-limit-session-secret",
+    env: { NODE_ENV: "test", SESSION_SECRET: "login-rate-limit-session-secret" }
+  });
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const response = await request(limitedApp).post("/api/auth/login").send({
+      identifier: "not-a-real-user", password: "wrong-password"
+    });
+    assert.equal(response.status, 401);
+  }
+  const limited = await request(limitedApp).post("/api/auth/login").send({
+    identifier: "not-a-real-user", password: "wrong-password"
+  });
+  assert.equal(limited.status, 429);
+  assert.deepEqual(limited.body, {
+    error: "Too many login attempts. Please wait 15 minutes before trying again."
+  });
+});
+
 test("OAuth callback establishes a persistent authenticated session", async () => {
   const userId = Number(db.prepare("INSERT INTO users (name, email) VALUES (?, ?)")
     .run("OAuth guest", "oauth-guest@example.com").lastInsertRowid);
@@ -211,6 +385,44 @@ test("OAuth callback establishes a persistent authenticated session", async () =
   assert.match(callback.headers.location, /authenticated=1/);
   assert.equal(currentUser.status, 200);
   assert.equal(currentUser.body.user.id, userId);
+});
+
+test("OAuth popup completes in its opener and preserves the login session", async () => {
+  const userId = Number(db.prepare("INSERT INTO users (name, email, role) VALUES (?, ?, 'admin')")
+    .run("Popup administrator", "popup-admin@example.com").lastInsertRowid);
+  const authenticator = new Passport();
+  const oauthApp = createApp({
+    db,
+    passport: authenticator,
+    sessionStore: new session.MemoryStore(),
+    sessionSecret: "oauth-popup-test-session-secret",
+    env: {
+      NODE_ENV: "test",
+      GOOGLE_CLIENT_ID: "popup-client-id",
+      GOOGLE_CLIENT_SECRET: "popup-client-secret",
+      GOOGLE_CALLBACK_URL: "http://localhost:3000/auth/google/callback"
+    }
+  });
+  const browser = request.agent(oauthApp);
+  const start = await browser.get("/auth/google?popup=1");
+  assert.equal(start.status, 302, start.text);
+  const state = new URL(start.headers.location).searchParams.get("state");
+  authenticator.use("google", {
+    name: "google",
+    authenticate() {
+      this.success({ id: userId, name: "Popup administrator", email: "popup-admin@example.com" });
+    }
+  });
+  const callback = await browser.get(`/auth/google/callback?code=test&state=${encodeURIComponent(state)}`);
+  assert.equal(callback.status, 302);
+  assert.equal(callback.headers.location, "/auth/popup-complete?result=success");
+  const completion = await browser.get(callback.headers.location);
+  assert.equal(completion.status, 200);
+  assert.match(completion.text, /ngqamakwe-oauth/);
+  const popupScript = completion.text.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(popupScript);
+  assert.doesNotThrow(() => new vm.Script(popupScript));
+  assert.equal((await browser.get("/api/me")).body.user.id, userId);
 });
 
 test("production refuses weak session secrets and incomplete OAuth settings", () => {
@@ -311,6 +523,11 @@ test("website is served without exposing backend files", async () => {
   assert.equal(stylesheet.status, 200);
   assert.match(stylesheet.headers["cache-control"], /max-age=3600/);
   assert.match(login.text, /Sign in or create an account/);
+  assert.match(login.text, /Forgot password\?/);
+  assert.match(login.text, /class="password-toggle"/);
+  const inlineScripts = [...login.text.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  assert.ok(inlineScripts.length > 0);
+  inlineScripts.forEach((script) => assert.doesNotThrow(() => new vm.Script(script[1])));
   assert.equal(backendManifest.status, 404);
 });
 
@@ -480,6 +697,19 @@ test("provider identities cannot be removed until another login method is linked
   assert.equal(removed.status, 204);
   const last = await account.delete("/api/account/identities/google");
   assert.equal(last.status, 409);
+});
+
+test("password login remains available when unlinking a social sign-in method", async () => {
+  const userId = makeUser();
+  const account = authenticatedRequest(userId);
+  await account.post("/api/account/password").send({
+    username: "password.unlink", password: "a-long-local-password"
+  });
+  db.prepare("INSERT INTO identities (user_id, provider, provider_id) VALUES (?, 'google', ?)")
+    .run(userId, "password-unlink-google-subject");
+  assert.equal((await account.delete("/api/account/identities/google")).status, 204);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM identities WHERE user_id = ?").get(userId).count, 0);
+  assert.ok(db.prepare("SELECT password_hash FROM users WHERE id = ?").get(userId).password_hash);
 });
 
 test("administrator cannot remove the final active administrator", async () => {

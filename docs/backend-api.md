@@ -5,22 +5,26 @@ The website now ships with an Express/Node.js operations API, SQLite database, G
 ## Setup
 
 1. Run `npm install` and copy `.env.example` to `.env`.
-2. Set `SESSION_SECRET` to a random value of at least 32 characters, and set an administrator Google email in `ADMIN_EMAILS`.
+2. Set `SESSION_SECRET` to a random value of at least 32 characters. Create the first local administrator in an interactive terminal with `npm run create-admin`; the initial account is created only if no active administrator exists.
 3. Configure OAuth applications and callback URLs:
    - `https://YOUR_HOST/auth/google/callback`
    - `https://YOUR_HOST/auth/facebook/callback`
 4. For email, provide SMTP host, port, sender, and credentials when the server requires authentication. With SMTP unset, notifications remain visible in the durable queue and staff see that delivery is not configured.
 5. Set Yoco's `YOCO_SECRET_KEY` and `YOCO_WEBHOOK_SECRET`. In Yoco's Checkout API settings, register `https://YOUR_HOST/api/payments/yoco/webhook`. Yoco returns the webhook signing secret only once; store it in the production secret manager. `BASE_URL` must be the deployed HTTPS origin in production.
 6. Configure actual property coordinates in `BUSINESS_LATITUDE` and `BUSINESS_LONGITUDE`, and set `ATTENDANCE_RADIUS_METERS` for the on-premises clock. Browsers require HTTPS for reliable geolocation.
-7. Run `npm start`; open `/staff.html` after sign-in. Assign team positions in **Team & accounts**, add all bookable rooms, conference venues, dining and activities in **Inventory & availability**, and add breakfast dishes in **Breakfast menu & orders**. Use the exact booking form option as the inventory slug (for example `double-room` or `quad-biking`). Automatic confirmation defaults off.
+7. Run `npm start`; open `/login.html` to sign in with a username/password or a configured Google/Facebook account. Staff and administrators go to `/staff.html` after sign-in. Assign team positions in **Team & accounts**, add all bookable rooms, conference venues, dining and activities in **Inventory & availability**, and add breakfast dishes in **Breakfast menu & orders**. Use the exact booking form option as the inventory slug (for example `double-room` or `quad-biking`). Automatic confirmation defaults off.
 
 SQLite data lives under `server/data/`. Do not serve, commit, or share it. Back up the database and email queue securely. Production requires HTTPS, strict file/secret permissions, tested backups, and `TRUST_PROXY` set to the actual trusted proxy hop count. `BUSINESS_TIME_ZONE` defaults to `Africa/Johannesburg`; `PENDING_HOLD_HOURS` defaults to 24 and is limited to 1–168.
 
 ## Account access and linking
 
-Google/Facebook OAuth creates an account on first sign-in and resolves future sign-ins using the provider subject. Email equality alone never merges accounts. New accounts are customers; only a verified Google address allowlisted in `ADMIN_EMAILS` bootstraps the initial admin. Administrators promote existing users to staff in the Team console.
+Local registration creates a customer account using a unique username/email and a scrypt password hash; passwords must be 6–128 characters. Login accepts either username or email and has a per-IP rate limit. Self-registration never grants staff/admin rights. Create the initial administrator with `npm run create-admin` in a trusted interactive terminal; the command refuses to run if an active admin already exists. Confirm it prints `Administrator account created` before starting the server. An administrator can then promote guest accounts to staff in **Team & accounts**.
 
-From the signed-in account page, a user can link another provider or unlink one. Linking requires a sign-in within the last 10 minutes, uses OAuth state validation, and rejects provider identities already owned by another account. Users cannot remove their final sign-in method. There is no email/password recovery because credentials are managed by the identity providers.
+Users can choose **Forgot password?** on the login page and request a one-time reset link sent to their account email. Links expire after one hour and can only be used once. Password-reset email requires working SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `MAIL_FROM`, and `SMTP_USER`/`SMTP_PASSWORD` where required); set `BASE_URL` to the public HTTPS origin outside local development so reset links use the correct host. Requests show the same confirmation whether or not the email matches an account. Password inputs have a Show/Hide control.
+
+Google/Facebook OAuth creates an account on first sign-in and resolves future sign-ins using the provider subject. Email equality alone never merges accounts. OAuth buttons open a separate popup; on success it closes and returns staff/admin users to the staff console. A signed-in user can set a username/password from the account page; this requires a sign-in within the last 10 minutes. Accounts that have a local password can recover access through the email reset link; social-only accounts can set a local password from account settings after signing in.
+
+From the signed-in account page, a user can link another provider or unlink one. Linking requires a sign-in within the last 10 minutes, uses OAuth state validation, and rejects provider identities already owned by another account. Users cannot remove their final sign-in method.
 
 ## Staff console and permissions
 
@@ -48,9 +52,13 @@ Writes use same-origin JSON, except the Yoco server webhook. Errors return `{ "e
 |---|---|---|---|
 | GET | `/api/health` | Public | Readiness |
 | GET | `/auth/google`, `/auth/facebook` | Public | Sign in / sign up |
+| POST | `/api/auth/register`, `/api/auth/login` | Public, rate-limited | Create a guest account or sign in with username/email and password |
+| POST | `/api/auth/password-reset/request` | Public, rate-limited | Queue a one-hour password reset link to the account email |
+| POST | `/api/auth/password-reset/confirm` | Public, rate-limited | Set a new password using a one-time reset token |
 | GET | `/auth/google?intent=link`, `/auth/facebook?intent=link` | Recent-authenticated user | Link a provider |
 | GET | `/api/me`, `/api/account/identities`, `/api/account/bookings` | Signed in | Account and own reservations |
 | PATCH | `/api/account/profile` | Signed in | Update own display name and phone |
+| POST | `/api/account/password` | Signed in within 10 min | Set or change username and password |
 | DELETE | `/api/account/identities/:provider` | Signed in within 10 min | Unlink a provider; last identity is protected |
 | POST | `/api/account/bookings/:id/cancel` | Signed in owner | Cancel eligible unpaid reservation |
 | POST | `/api/account/bookings/:id/change` | Signed in owner | Change future unpaid dates, activity/resource, and party size if inventory allows |

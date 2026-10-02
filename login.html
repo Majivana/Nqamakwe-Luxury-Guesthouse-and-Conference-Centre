@@ -426,6 +426,23 @@
             }
         }
         .login-container.account-active { max-width: 980px; }
+        #local-login-form, #register-form, #password-account-form, #password-reset-request-form, #password-reset-form { text-align: left; margin: 16px 0; }
+        #local-login-form label, #register-form label, #password-account-form label, #password-reset-request-form label, #password-reset-form label { display: grid; gap: 6px; margin: 10px 0; font-size: .92rem; }
+        #local-login-form input, #register-form input, #password-account-form input, #password-reset-request-form input, #password-reset-form input { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 5px; }
+        .password-input-wrap { display: flex; gap: 8px; }
+        .password-input-wrap input { flex: 1; min-width: 0; }
+        .password-input-wrap .password-toggle {
+            position: static;
+            top: auto;
+            right: auto;
+            white-space: nowrap;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 0 10px;
+        }
+        .login-form-toggle { background: none; border: 0; color: #7c1628; text-decoration: underline; cursor: pointer; font: inherit; margin: 8px 0; }
+        .auth-help { font-size: .86rem; color: #555; }
         #account-tools section, .account-booking { background: #fff; border: 1px solid #e8e2d1; border-radius: 10px; padding: 18px; margin: 14px 0; }
         #account-tools label { display: grid; gap: 6px; margin: 10px 0; font-size: .92rem; }
         #account-tools input, #account-tools select { width: 100%; padding: 10px; }
@@ -478,25 +495,86 @@
                 
                 <div class="login-form" id="login-form">
                     <p id="login-status" role="status" aria-live="polite"></p>
+                    <form id="local-login-form">
+                        <label>Username or email
+                            <input name="identifier" autocomplete="username" minlength="3" maxlength="254" required>
+                        </label>
+                        <label>Password
+                            <span class="password-input-wrap">
+                                <input name="password" type="password" autocomplete="current-password" maxlength="128" required>
+                                <button type="button" class="password-toggle" aria-pressed="false">Show</button>
+                            </span>
+                        </label>
+                        <button type="submit" class="login-btn">Log In</button>
+                    </form>
+                    <button type="button" class="login-form-toggle" id="show-password-reset">Forgot password?</button>
+                    <form id="password-reset-request-form" hidden>
+                        <h3>Reset your password</h3>
+                        <p>Enter the email address on your account. If it matches, we’ll send a one-hour reset link.</p>
+                        <label>Email <input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+                        <button type="submit" class="login-btn">Send reset link</button>
+                        <button type="button" class="login-form-toggle" id="back-to-login">Back to log in</button>
+                    </form>
+                    <form id="password-reset-form" hidden>
+                        <h3>Choose a new password</h3>
+                        <label>New password
+                            <span class="password-input-wrap">
+                                <input name="password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+                                <button type="button" class="password-toggle" aria-pressed="false">Show</button>
+                            </span>
+                        </label>
+                        <p class="auth-help">Use at least 6 characters.</p>
+                        <button type="submit" class="login-btn">Update password</button>
+                    </form>
+                    <button type="button" class="login-form-toggle" id="show-register">Create an account</button>
+                    <form id="register-form" hidden>
+                        <h3>Create a guest account</h3>
+                        <label>Full name <input name="name" autocomplete="name" maxlength="120" required></label>
+                        <label>Email <input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+                        <label>Username <input name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,31}" required></label>
+                        <label>Password
+                            <span class="password-input-wrap">
+                                <input name="password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+                                <button type="button" class="password-toggle" aria-pressed="false">Show</button>
+                            </span>
+                        </label>
+                        <p class="auth-help">Use at least 6 characters. New accounts are guests; an administrator must assign staff access.</p>
+                        <button type="submit" class="login-btn">Create account</button>
+                        <button type="button" class="login-form-toggle" id="show-login">Back to log in</button>
+                    </form>
                     <div class="login-divider">
                         <span>Continue securely with</span>
                     </div>
                     
                     <div class="social-login">
-                        <a href="/auth/google" class="social-btn">
+                        <a href="/auth/google?popup=1" class="social-btn" data-oauth-provider="google">
                             <img src="assets/icons/google.png" alt="Google">
                             Google
                         </a>
-                        <a href="/auth/facebook" class="social-btn">
+                        <a href="/auth/facebook?popup=1" class="social-btn" data-oauth-provider="facebook">
                             <img src="assets/icons/facebook.png" alt="Facebook">
                             Facebook
                         </a>
                     </div>
                     
-                    <p class="register-link">New accounts are created securely the first time you sign in.</p>
+                    <p class="register-link">You can also continue with Google or Facebook in a separate sign-in window.</p>
                     <div id="account-tools" hidden>
                         <h3>Linked sign-in methods</h3>
                         <div id="linked-identities"></div>
+                        <section>
+                            <h3>Username and password</h3>
+                            <p id="password-login-status"></p>
+                            <form id="password-account-form">
+                                <label>Username <input name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{2,31}" required></label>
+                                <label>Set or change password
+                                    <span class="password-input-wrap">
+                                        <input name="password" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+                                        <button type="button" class="password-toggle" aria-pressed="false">Show</button>
+                                    </span>
+                                </label>
+                                <button type="submit">Save sign-in details</button>
+                            </form>
+                        </section>
                         <h3>Your reservations</h3>
                         <p><a class="login-btn" href="bookings.html#booking-form">Book accommodation, dining, conference or an activity</a></p>
                         <div id="account-bookings"></div>
@@ -618,6 +696,10 @@
             const status = document.getElementById('login-status');
             const logoutButton = document.getElementById('logout-button');
             const params = new URLSearchParams(window.location.search);
+            const resetToken = params.get('reset');
+            if (params.has('staff')) {
+                status.textContent = 'Sign in with a staff or administrator account to open the staff dashboard.';
+            }
             let accountBookings = [];
             const requestJson = async (url, options = {}) => {
                 const response = await fetch(url, {
@@ -625,10 +707,181 @@
                     ...options,
                     headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers }
                 });
-                const data = response.status === 204 ? {} : await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(data.error || 'Unable to complete this request.');
+                const body = response.status === 204 ? '' : await response.text();
+                let data = {};
+                if (body) {
+                    try {
+                        const parsed = JSON.parse(body);
+                        data = parsed && typeof parsed === 'object' ? parsed : { error: body.trim() };
+                    } catch {
+                        data = { error: body.trim() };
+                    }
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || `Request failed (${response.status}). Please try again.`);
+                }
                 return data;
             };
+            let oauthComplete = false;
+            const handleOAuthCompletion = async result => {
+                if (oauthComplete) return;
+                oauthComplete = true;
+                if (result === 'failed') {
+                    status.textContent = 'Social sign-in was not completed. Close the window and try again.';
+                    return;
+                }
+                if (result === 'linked') {
+                    status.textContent = 'Sign-in method linked to your account.';
+                    window.location.reload();
+                    return;
+                }
+                try {
+                    const response = await fetch('/api/staff/session', { credentials: 'same-origin' });
+                    if (response.ok) {
+                        window.location.assign('/staff.html');
+                    } else {
+                        window.location.reload();
+                    }
+                } catch {
+                    window.location.reload();
+                }
+            };
+            if ('BroadcastChannel' in window) {
+                const oauthChannel = new BroadcastChannel('ngqamakwe-oauth');
+                oauthChannel.addEventListener('message', event => {
+                    if (event.data?.type === 'ngqamakwe:oauth-complete' &&
+                        ['success', 'linked', 'failed'].includes(event.data.result)) {
+                        handleOAuthCompletion(event.data.result);
+                    }
+                });
+            }
+            window.addEventListener('message', event => {
+                if (event.origin !== window.location.origin ||
+                    event.data?.type !== 'ngqamakwe:oauth-complete' ||
+                    !['success', 'linked', 'failed'].includes(event.data.result)) return;
+                handleOAuthCompletion(event.data.result);
+            });
+            document.addEventListener('click', event => {
+                const link = event.target.closest('a[data-oauth-provider]');
+                if (!link) return;
+                event.preventDefault();
+                const popup = window.open(link.href, `ngqamakwe-${link.dataset.oauthProvider}`,
+                    'popup,width=520,height=680,resizable=yes,scrollbars=yes');
+                if (!popup) {
+                    status.textContent = 'Sign-in window was blocked. Allow pop-ups for this site and try again.';
+                    return;
+                }
+                if ('BroadcastChannel' in window) popup.opener = null;
+                popup.focus();
+            });
+            document.getElementById('show-register').addEventListener('click', () => {
+                document.getElementById('local-login-form').hidden = true;
+                document.getElementById('show-register').hidden = true;
+                document.getElementById('register-form').hidden = false;
+            });
+            document.getElementById('show-login').addEventListener('click', () => {
+                document.getElementById('register-form').hidden = true;
+                document.getElementById('show-register').hidden = false;
+                document.getElementById('local-login-form').hidden = false;
+            });
+            document.getElementById('show-password-reset').addEventListener('click', () => {
+                document.getElementById('local-login-form').hidden = true;
+                document.getElementById('show-password-reset').hidden = true;
+                document.getElementById('show-register').hidden = true;
+                document.getElementById('password-reset-request-form').hidden = false;
+            });
+            document.getElementById('back-to-login').addEventListener('click', () => {
+                document.getElementById('password-reset-request-form').hidden = true;
+                document.getElementById('local-login-form').hidden = false;
+                document.getElementById('show-password-reset').hidden = false;
+                document.getElementById('show-register').hidden = false;
+            });
+            if (resetToken) {
+                document.getElementById('local-login-form').hidden = true;
+                document.getElementById('show-password-reset').hidden = true;
+                document.getElementById('show-register').hidden = true;
+                document.querySelector('.login-divider').hidden = true;
+                document.querySelector('.social-login').hidden = true;
+                document.querySelector('.register-link').hidden = true;
+                document.getElementById('password-reset-form').hidden = false;
+            }
+            document.addEventListener('click', event => {
+                const toggle = event.target.closest('.password-toggle');
+                if (!toggle) return;
+                const input = toggle.closest('.password-input-wrap').querySelector('input');
+                const visible = input.type === 'password';
+                input.type = visible ? 'text' : 'password';
+                toggle.textContent = visible ? 'Hide' : 'Show';
+                toggle.setAttribute('aria-pressed', String(visible));
+            });
+            document.getElementById('local-login-form').addEventListener('submit', async event => {
+                event.preventDefault();
+                const button = event.submitter || event.currentTarget.querySelector('[type=submit]');
+                button.disabled = true;
+                try {
+                    const result = await requestJson('/api/auth/login', {
+                        method: 'POST',
+                        body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget).entries()))
+                    });
+                    window.location.assign(result.redirect);
+                } catch (error) {
+                    status.textContent = error instanceof TypeError
+                        ? 'Cannot reach the sign-in service. Keep the server running with npm start, then reload this page.'
+                        : error.message;
+                    button.disabled = false;
+                }
+            });
+            document.getElementById('password-reset-request-form').addEventListener('submit', async event => {
+                event.preventDefault();
+                const button = event.submitter || event.currentTarget.querySelector('[type=submit]');
+                button.disabled = true;
+                try {
+                    const result = await requestJson('/api/auth/password-reset/request', {
+                        method: 'POST',
+                        body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget).entries()))
+                    });
+                    status.textContent = result.message;
+                    event.currentTarget.reset();
+                } catch (error) {
+                    status.textContent = error.message;
+                } finally {
+                    button.disabled = false;
+                }
+            });
+            document.getElementById('password-reset-form').addEventListener('submit', async event => {
+                event.preventDefault();
+                const button = event.submitter || event.currentTarget.querySelector('[type=submit]');
+                button.disabled = true;
+                try {
+                    const result = await requestJson('/api/auth/password-reset/confirm', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            token: resetToken,
+                            password: new FormData(event.currentTarget).get('password')
+                        })
+                    });
+                    status.textContent = result.message;
+                    window.setTimeout(() => window.location.assign('/login.html'), 1200);
+                } catch (error) {
+                    status.textContent = error.message;
+                    button.disabled = false;
+                }
+            });
+            document.getElementById('register-form').addEventListener('submit', async event => {
+                event.preventDefault();
+                const button = event.submitter || event.currentTarget.querySelector('[type=submit]');
+                button.disabled = true;
+                try {
+                    await requestJson('/api/auth/register', {
+                        method: 'POST',
+                        body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget).entries()))
+                    });
+                    window.location.assign('/login.html?authenticated=1');
+                } catch (error) {
+                    status.textContent = error.message;
+                    button.disabled = false;
+                }
+            });
             const money = (cents, currency = 'ZAR') =>
                 new Intl.NumberFormat('en-ZA', { style: 'currency', currency }).format(cents / 100);
             const localToday = new Date().toLocaleDateString('en-CA');
@@ -716,27 +969,36 @@
             }
 
             try {
-                let meResponse;
+                let meResponse = null;
                 try {
                     meResponse = await requestJson('/api/me');
                 } catch (error) {
-                    if (/Authentication required/i.test(error.message)) return;
-                    throw error;
+                    if (!/Authentication required/i.test(error.message)) throw error;
                 }
-                const { user } = meResponse;
-                status.textContent = `Signed in as ${user.name}${user.email ? ` (${user.email})` : ''}.`;
-                logoutButton.hidden = false;
-                document.getElementById('account-tools').hidden = false;
-                document.querySelector('.login-container').classList.add('account-active');
-                document.querySelectorAll('.social-btn').forEach(button => button.style.display = 'none');
-                const { identities } = await requestJson('/api/account/identities');
-                const linked = new Set(identities.map(identity => identity.provider));
-                document.getElementById('linked-identities').innerHTML = ['google', 'facebook'].map(provider =>
-                    linked.has(provider)
-                        ? `<p>${provider === 'google' ? 'Google' : 'Facebook'} linked ${identities.length > 1 ? `<button type="button" data-unlink="${provider}">Unlink</button>` : '<span>· Link another method before unlinking.</span>'}</p>`
-                        : `<p>${provider === 'google' ? 'Google' : 'Facebook'} not linked <a href="/auth/${provider}?intent=link">Link account</a></p>`
-                ).join('');
-                await loadAccountDashboard();
+                if (meResponse) {
+                    const { user } = meResponse;
+                    status.textContent = `Signed in as ${user.name}${user.email ? ` (${user.email})` : ''}.`;
+                    logoutButton.hidden = false;
+                    document.getElementById('account-tools').hidden = false;
+                    document.querySelector('.login-container').classList.add('account-active');
+                    document.querySelectorAll('.social-btn').forEach(button => button.style.display = 'none');
+                    document.getElementById('local-login-form').hidden = true;
+                    document.getElementById('show-register').hidden = true;
+                    document.getElementById('register-form').hidden = true;
+                    const { identities, has_password: hasPassword, username } = await requestJson('/api/account/identities');
+                    const linked = new Set(identities.map(identity => identity.provider));
+                    const signInMethodCount = identities.length + Number(hasPassword);
+                    document.getElementById('linked-identities').innerHTML = ['google', 'facebook'].map(provider =>
+                        linked.has(provider)
+                            ? `<p>${provider === 'google' ? 'Google' : 'Facebook'} linked ${signInMethodCount > 1 ? `<button type="button" data-unlink="${provider}">Unlink</button>` : '<span>· Link another method before unlinking.</span>'}</p>`
+                            : `<p>${provider === 'google' ? 'Google' : 'Facebook'} not linked <a href="/auth/${provider}?intent=link&popup=1" data-oauth-provider="${provider}">Link account</a></p>`
+                    ).join('');
+                    document.querySelector('#password-account-form [name=username]').value = username || '';
+                    document.getElementById('password-login-status').textContent = hasPassword
+                        ? 'A username and password are set for this account. Saving here replaces the password.'
+                        : 'Set a username and password to sign in without a social provider.';
+                    await loadAccountDashboard();
+                }
             } catch {
                 status.textContent = 'Account services are temporarily unavailable. Please try again later.';
             }
@@ -817,6 +1079,20 @@
                         });
                         status.textContent = `Reservation updated. New status: ${result.booking.status}.`;
                         await loadAccountDashboard();
+                    } catch (error) {
+                        status.textContent = error.message;
+                    }
+                } else if (event.target.id === 'password-account-form') {
+                    event.preventDefault();
+                    try {
+                        const data = Object.fromEntries(new FormData(event.target).entries());
+                        await requestJson('/api/account/password', {
+                            method: 'POST', body: JSON.stringify(data)
+                        });
+                        event.target.reset();
+                        document.querySelector('#password-account-form [name=username]').value = data.username;
+                        document.getElementById('password-login-status').textContent =
+                            'Username and password saved. You can now use them on the sign-in form.';
                     } catch (error) {
                         status.textContent = error.message;
                     }

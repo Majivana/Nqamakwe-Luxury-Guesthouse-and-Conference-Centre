@@ -31,6 +31,13 @@ function createDatabase(filename) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE (provider, provider_id)
     );
+
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      token_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   db.exec(`
@@ -296,6 +303,8 @@ function createDatabase(filename) {
   if (!userColumns.has("staff_role")) {
     db.exec("ALTER TABLE users ADD COLUMN staff_role TEXT NOT NULL DEFAULT 'general_worker'");
   }
+  if (!userColumns.has("username")) db.exec("ALTER TABLE users ADD COLUMN username TEXT");
+  if (!userColumns.has("password_hash")) db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT");
   const bookingColumns = new Set(db.prepare("PRAGMA table_info(bookings)").all().map((column) => column.name));
   if (!bookingColumns.has("resource_id")) db.exec("ALTER TABLE bookings ADD COLUMN resource_id INTEGER REFERENCES inventory_resources(id)");
   if (!bookingColumns.has("units_requested")) db.exec("ALTER TABLE bookings ADD COLUMN units_requested INTEGER NOT NULL DEFAULT 1");
@@ -312,6 +321,12 @@ function createDatabase(filename) {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_bookings_user_created
       ON bookings(user_id, created_at DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username
+      ON users(username COLLATE NOCASE) WHERE username IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_local_email
+      ON users(lower(email)) WHERE password_hash IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_password_reset_user_expiry
+      ON password_reset_tokens(user_id, expires_at);
     CREATE INDEX IF NOT EXISTS idx_bookings_status_created
       ON bookings(status, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_inquiries_status_created

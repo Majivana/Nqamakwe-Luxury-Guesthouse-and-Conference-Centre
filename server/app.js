@@ -1,4 +1,5 @@
 const path = require("node:path");
+const crypto = require("node:crypto");
 const express = require("express");
 const session = require("express-session");
 const helmet = require("helmet");
@@ -6,6 +7,7 @@ const passport = require("passport");
 const { rateLimit } = require("express-rate-limit");
 const { configurePassport } = require("./auth");
 const { createDatabase } = require("./db");
+const { hashPassword, validatePassword, validateUsername, verifyPassword } = require("./password-auth");
 const { SQLiteSessionStore } = require("./sqlite-session-store");
 const { createMailer, enqueueEmail, flushEmailOutbox } = require("./email");
 const { registerBusinessRoutes } = require("./business");
@@ -91,31 +93,59 @@ function createApp(options = {}) {
     windowMs: 15 * 60 * 1000,
     limit: 300,
     standardHeaders: "draft-8",
-    legacyHeaders: false
+    legacyHeaders: false,
+    handler: (req, res) => res.status(429).json({
+      error: "Too many requests. Please wait a few minutes and try again."
+    })
   });
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 20,
     standardHeaders: "draft-8",
-    legacyHeaders: false
+    legacyHeaders: false,
+    handler: (req, res) => res.status(429).json({
+      error: "Too many sign-in requests. Please wait a few minutes and try again."
+    })
+  });
+  const credentialLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 8,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    handler: (req, res) => res.status(429).json({
+      error: "Too many login attempts. Please wait 15 minutes before trying again."
+    })
+  });
+  const passwordResetLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    handler: (req, res) => res.status(429).json({
+      error: "Too many password reset requests. Please wait 15 minutes before trying again."
+    })
   });
   app.use("/api", (req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
     next();
   }, apiLimiter);
 
-  function finishOAuthLogin(req, res, next, error, user, linking = false) {
+  function finishOAuthLogin(req, res, next, error, user, linking = false, popup = false) {
     if (error) {
       console.error("OAuth callback failed:", error.message);
       delete req.session.identityLinkProvider;
       delete req.session.identityLinkUserId;
       delete req.session.identityLinkStartedAt;
+      delete req.session.oauthPopup;
+      if (popup) return res.redirect("/auth/popup-complete?result=failed");
       return res.redirect(linking ? "/login.html?error=link_failed" : "/login.html?error=sign_in_failed");
     }
     if (!user) {
       delete req.session.identityLinkProvider;
       delete req.session.identityLinkUserId;
       delete req.session.identityLinkStartedAt;
+      delete req.session.oauthPopup;
+      if (popup) return res.redirect("/auth/popup-complete?result=failed");
       return res.redirect(linking ? "/login.html?error=link_failed" : "/login.html?error=sign_in_failed");
     }
     if (linking) {
@@ -125,22 +155,60 @@ function createApp(options = {}) {
       delete req.session.identityLinkProvider;
       delete req.session.identityLinkUserId;
       delete req.session.identityLinkStartedAt;
+      delete req.session.oauthPopup;
       return req.session.save((saveError) => {
         if (saveError) return next(saveError);
+        if (popup) return res.redirect("/auth/popup-complete?result=linked");
         res.redirect("/login.html?account_linked=1");
       });
     }
     req.logIn(user, (loginError) => {
       if (loginError) return next(loginError);
       req.session.authenticatedAt = Date.now();
+      delete req.session.oauthPopup;
       req.session.save((saveError) => {
         if (saveError) return next(saveError);
+        if (popup) return res.redirect("/auth/popup-complete?result=success");
+        if (["staff", "admin"].includes(user.role)) return res.redirect("/staff.html");
         res.redirect("/login.html?authenticated=1");
       });
     });
   }
 
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+  app.get("/auth/popup-complete", (req, res) => {
+    const result = ["success", "linked", "failed"].includes(req.query.result) ? req.query.result : "failed";
+    res.type("html").send(`<!doctype html>
+      <html lang="en">
+        <head><meta charset="utf-8"><title>Sign-in complete</title></head>
+        <body>
+          <p id="status">Finishing sign-in…</p>
+          <script>
+            const message = { type: "ngqamakwe:oauth-complete", result: ${JSON.stringify(result)} };
+            if ("BroadcastChannel" in window) {
+              const channel = new BroadcastChannel("ngqamakwe-oauth");
+              channel.postMessage(message);
+              channel.close();
+            }
+            if (window.opener) window.opener.postMessage(message, window.location.origin);
+            window.close();
+            document.getElementById("status").textContent = "Sign-in complete. You can close this window.";
+            const link = document.createElement("a");
+            link.href = "/login.html";
+            link.textContent = "Return to sign in";
+            document.body.append(link);
+          </script>
+        </body>
+      </html>`);
+  });
+
+  function beginOAuth(req, res, next, provider, options) {
+    req.session.oauthPopup = req.query.popup === "1";
+    req.session.save((error) => {
+      if (error) return next(error);
+      auth.authenticate(provider, options)(req, res, next);
+    });
+  }
 
   app.get("/auth/google", authLimiter, (req, res, next) => {
     if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
@@ -157,20 +225,18 @@ function createApp(options = {}) {
       req.session.identityLinkProvider = "google";
       req.session.identityLinkUserId = req.user.id;
       req.session.identityLinkStartedAt = Date.now();
-      return req.session.save((error) => {
-        if (error) return next(error);
-        auth.authenticate("google", { scope: ["profile", "email"], state: true })(req, res, next);
-      });
+      return beginOAuth(req, res, next, "google", { scope: ["profile", "email"], state: true });
     }
-    auth.authenticate("google", { scope: ["profile", "email"], state: true })(req, res, next);
+    beginOAuth(req, res, next, "google", { scope: ["profile", "email"], state: true });
   });
   app.get("/auth/google/callback", authLimiter, (req, res, next) => {
     if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
       return res.status(503).json({ error: "Google sign-in is not configured." });
     }
     const linking = req.session.identityLinkProvider === "google";
+    const popup = req.session.oauthPopup === true;
     auth.authenticate("google", {}, (error, user) =>
-      finishOAuthLogin(req, res, next, error, user, linking)
+      finishOAuthLogin(req, res, next, error, user, linking, popup)
     )(req, res, next);
   });
   app.get("/auth/facebook", authLimiter, (req, res, next) => {
@@ -188,20 +254,18 @@ function createApp(options = {}) {
       req.session.identityLinkProvider = "facebook";
       req.session.identityLinkUserId = req.user.id;
       req.session.identityLinkStartedAt = Date.now();
-      return req.session.save((error) => {
-        if (error) return next(error);
-        auth.authenticate("facebook", { scope: ["email"], state: true })(req, res, next);
-      });
+      return beginOAuth(req, res, next, "facebook", { scope: ["email"], state: true });
     }
-    auth.authenticate("facebook", { scope: ["email"], state: true })(req, res, next);
+    beginOAuth(req, res, next, "facebook", { scope: ["email"], state: true });
   });
   app.get("/auth/facebook/callback", authLimiter, (req, res, next) => {
     if (!env.FACEBOOK_APP_ID || !env.FACEBOOK_APP_SECRET) {
       return res.status(503).json({ error: "Facebook sign-in is not configured." });
     }
     const linking = req.session.identityLinkProvider === "facebook";
+    const popup = req.session.oauthPopup === true;
     auth.authenticate("facebook", {}, (error, user) =>
-      finishOAuthLogin(req, res, next, error, user, linking)
+      finishOAuthLogin(req, res, next, error, user, linking, popup)
     )(req, res, next);
   });
 
@@ -272,6 +336,161 @@ function createApp(options = {}) {
     req.recordId = id;
     next();
   }
+  function validateCredentials(usernameValue, passwordValue) {
+    const username = validateUsername(usernameValue);
+    if (!username) {
+      throw new ValidationError("Username must be 3–32 characters and use letters, numbers, dots, underscores, or hyphens.");
+    }
+    if (!validatePassword(passwordValue)) {
+      throw new ValidationError("Password must be between 6 and 128 characters.");
+    }
+    return username;
+  }
+  function loginUser(req, user) {
+    return new Promise((resolve, reject) => {
+      req.logIn(user, (error) => {
+        if (error) return reject(error);
+        req.session.authenticatedAt = Date.now();
+        req.session.save((saveError) => saveError ? reject(saveError) : resolve());
+      });
+    });
+  }
+  function rejectCredentialRequest(error, req, res, next) {
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    if (error?.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      return res.status(409).json({ error: "An account already uses those details. Sign in with its existing method or choose different details." });
+    }
+    next(error);
+  }
+
+  app.post("/api/auth/register", credentialLimiter, (req, res, next) => {
+    (async () => {
+      const name = validateText(req.body?.name, "Name", 120);
+      const email = validateEmail(req.body?.email);
+      const username = validateCredentials(req.body?.username, req.body?.password);
+      const existing = db.prepare(`
+        SELECT id FROM users
+        WHERE lower(email) IN (?, ?) OR username COLLATE NOCASE IN (?, ?)
+        LIMIT 1
+      `).get(email, username, email, username);
+      if (existing) throw new ValidationError("An account already uses those details. Sign in with its existing method or choose different details.");
+      const passwordHash = await hashPassword(req.body.password);
+      const user = db.transaction(() => {
+        const result = db.prepare(`
+          INSERT INTO users (name, email, username, password_hash)
+          VALUES (?, ?, ?, ?)
+        `).run(name, email, username, passwordHash);
+        return db.prepare(`
+          SELECT id, name, email, phone, username, role, status, staff_role
+          FROM users WHERE id = ?
+        `).get(result.lastInsertRowid);
+      })();
+      await loginUser(req, user);
+      db.prepare(`
+        INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, details)
+        VALUES (?, 'account.password_registered', 'user', ?, '{}')
+      `).run(user.id, user.id);
+      res.status(201).json({ user });
+    })().catch((error) => rejectCredentialRequest(error, req, res, next));
+  });
+
+  app.post("/api/auth/login", credentialLimiter, (req, res, next) => {
+    (async () => {
+      const identifier = typeof req.body?.identifier === "string"
+        ? req.body.identifier.trim().toLowerCase().slice(0, 254)
+        : "";
+      const password = req.body?.password;
+      if (!identifier || typeof password !== "string" || password.length > 128) {
+        await verifyPassword(typeof password === "string" ? password : "", null);
+        return res.status(401).json({ error: "Invalid username/email or password." });
+      }
+      const user = db.prepare(`
+        SELECT id, name, email, phone, username, role, status, staff_role, password_hash
+        FROM users
+        WHERE password_hash IS NOT NULL
+          AND (username = ? COLLATE NOCASE OR lower(email) = ?)
+        LIMIT 1
+      `).get(identifier, identifier);
+      const passwordMatches = await verifyPassword(password, user?.password_hash || null);
+      if (!user || !passwordMatches || user.status !== "active") {
+        return res.status(401).json({ error: "Invalid username/email or password." });
+      }
+      delete user.password_hash;
+      await loginUser(req, user);
+      db.prepare(`
+        INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, details)
+        VALUES (?, 'account.password_login', 'user', ?, '{}')
+      `).run(user.id, user.id);
+      res.json({
+        user,
+        redirect: ["staff", "admin"].includes(user.role) ? "/staff.html" : "/login.html?authenticated=1"
+      });
+    })().catch((error) => rejectCredentialRequest(error, req, res, next));
+  });
+
+  app.post("/api/auth/password-reset/request", passwordResetLimiter, (req, res, next) => {
+    (async () => {
+      const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254) {
+        const user = db.prepare(`
+          SELECT id, email FROM users
+          WHERE lower(email) = ? AND password_hash IS NOT NULL AND status = 'active'
+          LIMIT 1
+        `).get(email);
+        if (user) {
+          const token = crypto.randomBytes(32).toString("hex");
+          const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+          db.prepare("DELETE FROM password_reset_tokens WHERE user_id = ? OR expires_at <= datetime('now')").run(user.id);
+          db.prepare(`
+            INSERT INTO password_reset_tokens (token_hash, user_id, expires_at)
+            VALUES (?, ?, datetime('now', '+1 hour'))
+          `).run(tokenHash, user.id);
+          const baseUrl = env.BASE_URL || "http://localhost:3000";
+          const resetUrl = new URL(`/login.html?reset=${token}`, baseUrl).toString();
+          enqueueEmail(db, {
+            recipient: user.email,
+            subject: "Reset your Ngqamakwe account password",
+            text: `A password reset was requested for your account. Open this link within one hour to choose a new password:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`
+          });
+          if (mailer) await flushEmailOutbox(db, mailer);
+        }
+      }
+      res.json({
+        message: "If an active account uses that email address, a reset link will be emailed if email delivery is configured. Contact the site administrator if you do not receive it."
+      });
+    })().catch(next);
+  });
+
+  app.post("/api/auth/password-reset/confirm", passwordResetLimiter, (req, res, next) => {
+    (async () => {
+      const { token, password } = req.body || {};
+      if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token) || !validatePassword(password)) {
+        throw new ValidationError("This reset link is invalid or expired. Request a new one.");
+      }
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+      const reset = db.prepare(`
+        SELECT user_id FROM password_reset_tokens
+        WHERE token_hash = ? AND expires_at > datetime('now')
+        LIMIT 1
+      `).get(tokenHash);
+      if (!reset) throw new ValidationError("This reset link is invalid or expired. Request a new one.");
+      const passwordHash = await hashPassword(password);
+      const updated = db.transaction(() => {
+        const consumed = db.prepare(`
+          DELETE FROM password_reset_tokens
+          WHERE token_hash = ? AND expires_at > datetime('now')
+        `).run(tokenHash);
+        if (!consumed.changes) return false;
+        db.prepare("DELETE FROM password_reset_tokens WHERE user_id = ?").run(reset.user_id);
+        const result = db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ? AND status = 'active'")
+          .run(passwordHash, reset.user_id);
+        if (!result.changes) throw new ValidationError("This reset link is invalid or expired. Request a new one.");
+        return true;
+      })();
+      if (!updated) throw new ValidationError("This reset link is invalid or expired. Request a new one.");
+      res.json({ message: "Password updated. You can now sign in with your new password." });
+    })().catch((error) => rejectCredentialRequest(error, req, res, next));
+  });
 
   app.get("/api/me", (req, res) => {
     if (!req.isAuthenticated?.() || req.user.status !== "active") {
@@ -281,15 +500,42 @@ function createApp(options = {}) {
   });
   app.get("/api/account/identities", requireAuth, (req, res) => {
     const identities = db.prepare("SELECT provider, created_at FROM identities WHERE user_id = ? ORDER BY provider").all(req.user.id);
-    res.json({ identities });
+    const hasPassword = Boolean(db.prepare("SELECT password_hash FROM users WHERE id = ?").get(req.user.id)?.password_hash);
+    res.json({ identities, has_password: hasPassword, username: req.user.username || null });
+  });
+  app.post("/api/account/password", requireAuth, requireRecentAuthentication, (req, res, next) => {
+    try {
+      const username = validateCredentials(req.body?.username, req.body?.password);
+      const collision = db.prepare(`
+        SELECT id FROM users
+        WHERE id != ? AND (lower(email) IN (?, ?) OR username COLLATE NOCASE IN (?, ?))
+        LIMIT 1
+      `).get(req.user.id, username, req.user.email || "", username, req.user.email || "");
+      if (collision) throw new ValidationError("That username is already in use.");
+      const passwordHash = hashPassword(req.body.password);
+      passwordHash.then((hash) => {
+        db.prepare("UPDATE users SET username = ?, password_hash = ?, updated_at = datetime('now') WHERE id = ?")
+          .run(username, hash, req.user.id);
+        db.prepare(`
+          INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, details)
+          VALUES (?, 'account.password_set', 'user', ?, '{}')
+        `).run(req.user.id, req.user.id);
+        res.json({ success: true, username });
+      }).catch(next);
+    } catch (error) {
+      rejectCredentialRequest(error, req, res, next);
+    }
   });
   app.delete("/api/account/identities/:provider", requireAuth, requireRecentAuthentication, (req, res) => {
     const provider = req.params.provider;
     if (!["google", "facebook"].includes(provider)) {
       return res.status(400).json({ error: "Unsupported identity provider." });
     }
-    const count = db.prepare("SELECT COUNT(*) AS count FROM identities WHERE user_id = ?").get(req.user.id).count;
-    if (count <= 1) return res.status(409).json({ error: "Link another sign-in method before removing the last one." });
+    const identityCount = db.prepare("SELECT COUNT(*) AS count FROM identities WHERE user_id = ?").get(req.user.id).count;
+    const hasPassword = Boolean(db.prepare("SELECT password_hash FROM users WHERE id = ?").get(req.user.id)?.password_hash);
+    if (identityCount + Number(hasPassword) <= 1) {
+      return res.status(409).json({ error: "Link another sign-in method before removing the last one." });
+    }
     const result = db.prepare("DELETE FROM identities WHERE user_id = ? AND provider = ?").run(req.user.id, provider);
     if (!result.changes) return res.status(404).json({ error: "Provider identity not linked." });
     db.prepare(`
@@ -313,7 +559,7 @@ function createApp(options = {}) {
     const phone = validateText(req.body.phone, "Phone", 40, { optional: true });
     db.prepare("UPDATE users SET name = ?, phone = ?, updated_at = datetime('now') WHERE id = ?")
       .run(name, phone, req.user.id);
-    res.json({ user: db.prepare("SELECT id, name, email, phone, role, status FROM users WHERE id = ?").get(req.user.id) });
+    res.json({ user: db.prepare("SELECT id, name, email, phone, username, role, status FROM users WHERE id = ?").get(req.user.id) });
   }));
   app.get("/api/account/bookings", requireAuth, (req, res) => {
     const bookings = db.prepare(`
@@ -370,7 +616,7 @@ function createApp(options = {}) {
   });
   app.get("/api/admin/users", requireAuth, requireAdmin, (req, res) => {
     const users = db.prepare(`
-      SELECT u.id, u.name, u.email, u.phone, u.role, u.status, u.staff_role, u.created_at,
+      SELECT u.id, u.name, u.email, u.phone, u.username, u.role, u.status, u.staff_role, u.created_at,
         GROUP_CONCAT(i.provider) AS providers
       FROM users u LEFT JOIN identities i ON i.user_id = u.id
       GROUP BY u.id ORDER BY u.created_at DESC
@@ -405,7 +651,7 @@ function createApp(options = {}) {
       INSERT INTO audit_log (actor_user_id, action, entity_type, entity_id, details)
       VALUES (?, 'user.access_updated', 'user', ?, ?)
     `).run(req.user.id, req.recordId, JSON.stringify({ role: nextRole, staff_role: staffRole ?? target.staff_role, status: nextStatus }));
-    res.json({ user: db.prepare("SELECT id, name, email, phone, role, status, staff_role FROM users WHERE id = ?").get(req.recordId) });
+    res.json({ user: db.prepare("SELECT id, name, email, phone, username, role, status, staff_role FROM users WHERE id = ?").get(req.recordId) });
   }));
 
   app.get("/api/admin/offerings", requireAuth, requireAdmin, (req, res) => {
